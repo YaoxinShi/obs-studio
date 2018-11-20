@@ -333,7 +333,8 @@ enum {
     MFX_CODEC_HEVC        =MFX_MAKEFOURCC('H','E','V','C'),
     MFX_CODEC_MPEG2       =MFX_MAKEFOURCC('M','P','G','2'),
     MFX_CODEC_VC1         =MFX_MAKEFOURCC('V','C','1',' '),
-    MFX_CODEC_CAPTURE     =MFX_MAKEFOURCC('C','A','P','T')
+    MFX_CODEC_CAPTURE     =MFX_MAKEFOURCC('C','A','P','T'),
+    MFX_CODEC_VP9         =MFX_MAKEFOURCC('V','P','9',' '),
 };
 
 /* CodecProfile, CodecLevel */
@@ -426,6 +427,12 @@ enum {
 
     MFX_TIER_HEVC_MAIN  = 0,
     MFX_TIER_HEVC_HIGH  = 0x100,
+
+    /* VP9 Profiles */
+    MFX_PROFILE_VP9_0                       = 1,
+    MFX_PROFILE_VP9_1                       = 2,
+    MFX_PROFILE_VP9_2                       = 3,
+    MFX_PROFILE_VP9_3                       = 4,
 };
 
 /* GopOptFlag */

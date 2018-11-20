@@ -117,6 +117,7 @@ typedef struct
 	mfxU16 nKeyIntSec;
 	mfxU16 nbFrames;
 	mfxU16 nICQQuality;
+    mfxU16 nCodecID; //0=H.264, 1=VP9
 } qsv_param_t;
 
 enum qsv_cpu_platform {

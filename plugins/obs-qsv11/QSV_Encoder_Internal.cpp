@@ -197,7 +197,18 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 {
 	memset(&m_mfxEncParams, 0, sizeof(m_mfxEncParams));
 
-	m_mfxEncParams.mfx.CodecId = MFX_CODEC_AVC;
+    if (pParams->nCodecID == 0)
+    {
+    	m_mfxEncParams.mfx.CodecId = MFX_CODEC_AVC;
+    }
+    else if (pParams->nCodecID == 1)
+    {
+        m_mfxEncParams.mfx.CodecId = MFX_CODEC_VP9;
+    }
+    else
+    {
+        assert(0);
+    }
 	m_mfxEncParams.mfx.GopOptFlag = MFX_GOP_STRICT;
 	m_mfxEncParams.mfx.NumSlice = 1;
 	m_mfxEncParams.mfx.TargetUsage = pParams->nTargetUsage;
@@ -367,6 +378,10 @@ mfxStatus QSV_Encoder_Internal::GetVideoParam()
 	extendedBuffers[0] = (mfxExtBuffer*)& opt;
 	m_parameter.ExtParam = extendedBuffers;
 	m_parameter.NumExtParam = 1;
+	if (m_mfxEncParams.mfx.CodecId == MFX_CODEC_VP9)
+	{
+		m_parameter.NumExtParam = 0; // VP9 not support MFX_EXTBUFF_CODING_OPTION_SPSPPS
+	}
 
 	opt.SPSBuffer = m_SPSBuffer;
 	opt.PPSBuffer = m_PPSBuffer;
