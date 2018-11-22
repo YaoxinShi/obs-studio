@@ -60,6 +60,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mfxvideo++.h"
 #include <VersionHelpers.h>
 #include <obs-module.h>
+#include <ctime>
 
 #define do_log(level, format, ...) \
 	blog(level, "[qsv encoder: '%s'] " format, \
@@ -189,6 +190,12 @@ mfxStatus QSV_Encoder_Internal::Open(qsv_param_t * pParams)
 	if (sts >= MFX_ERR_NONE) {
 		g_numEncodersOpen++;
 	}
+
+    char cFileName[128];
+    std::time_t t = std::time(nullptr);
+    strftime(cFileName, 128, "C:\\tmp\\%F %H-%M-%S.vp9", localtime(&t));
+    m_ofsES.open(cFileName, ios::out | ios::binary);
+
 	return sts;
 }
 
@@ -522,6 +529,14 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 		m_nFirstSyncTask = (m_nFirstSyncTask + 1) % m_nTaskPool;
 		*pBS = &m_outBitstream;
 
+		if (!m_ofsES.fail())
+			m_ofsES.write((char*)(m_outBitstream.Data + m_outBitstream.DataOffset), m_outBitstream.DataLength);
+
+        if (0)
+        {
+            if (!m_ofsES.fail())
+                m_ofsES.close();
+        }
 #if 0
 		info("MSDK Encode:\n"
 			"\tnew FirstSyncTask: %d\n"
@@ -614,6 +629,9 @@ mfxStatus QSV_Encoder_Internal::ClearData()
 	for (int i = 0; i < m_nTaskPool; i++)
 		delete m_pTaskPool[i].mfxBS.Data;
 	MSDK_SAFE_DELETE_ARRAY(m_pTaskPool);
+
+    if (!m_ofsES.fail())
+        m_ofsES.close();
 
 	delete m_outBitstream.Data;
 
