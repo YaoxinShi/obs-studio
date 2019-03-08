@@ -166,6 +166,9 @@ bool obs_module_load(void)
 	//av_log_set_callback(ffmpeg_log_callback);
 
 	obs_register_source(&ffmpeg_source);
+	//yaoxin: two types of output plgin.
+	//    ffmpeg_output is for recording type as "Custom Output(FFmpeg)"
+	//    ffmpeg_muxer  is for recording type as "Standard"
 	obs_register_output(&ffmpeg_output);
 	obs_register_output(&ffmpeg_muxer);
 	obs_register_output(&replay_buffer);

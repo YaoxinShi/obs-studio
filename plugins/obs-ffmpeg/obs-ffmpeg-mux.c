@@ -258,6 +258,11 @@ static void build_command_line(struct ffmpeg_muxer *stream, struct dstr *cmd,
 		}
 	}
 
+	//yaoxin: I tried to hack the file format to ivf for vp9 container here.
+	//(by changing ffmpeg_mux64.exe's input parameter)
+	//But it doesn't work. Maybe the ffmpeg bianry is not built with libvpx.
+	//dstr_replace(cmd, ".flv", ".ivf");
+	//dstr_replace(cmd, "h264", "vp9");
 	add_muxer_params(cmd, stream);
 }
 
@@ -265,6 +270,7 @@ static inline void start_pipe(struct ffmpeg_muxer *stream, const char *path)
 {
 	struct dstr cmd;
 	build_command_line(stream, &cmd, path);
+	//yaoxin: create a separate process "ffmpeg_mux64.exe" to mux audio and video to a file
 	stream->pipe = os_process_pipe_create(cmd.array, "w");
 	dstr_free(&cmd);
 }
@@ -298,7 +304,7 @@ static bool ffmpeg_mux_start(void *data)
 		return false;
 	}
 
-	fclose(test_file);
+	//fclose(test_file);
 	os_unlink(path);
 
 	start_pipe(stream, path);
@@ -370,6 +376,7 @@ static void signal_failure(struct ffmpeg_muxer *stream)
 static bool write_packet(struct ffmpeg_muxer *stream,
 		struct encoder_packet *packet)
 {
+	//yaoxin: send the packet to ffmpeg_mux64.exe
 	bool is_video = packet->type == OBS_ENCODER_VIDEO;
 	size_t ret;
 
@@ -398,6 +405,12 @@ static bool write_packet(struct ffmpeg_muxer *stream,
 	}
 
 	stream->total_bytes += packet->size;
+
+	if (0) // for debug only
+	{
+		//os_process_pipe_destroy(stream->pipe);
+		deactivate(stream);
+	}
 	return true;
 }
 
@@ -450,6 +463,7 @@ static bool send_headers(struct ffmpeg_muxer *stream)
 
 static void ffmpeg_mux_data(void *data, struct encoder_packet *packet)
 {
+//yaoxin: if choose recording type as "Standard", file writer comes here
 	struct ffmpeg_muxer *stream = data;
 
 	if (!active(stream))

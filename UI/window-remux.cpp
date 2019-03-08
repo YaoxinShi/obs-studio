@@ -106,6 +106,7 @@ OBSRemux::~OBSRemux()
 	remuxer.wait();
 }
 
+//yaoxin: recording file format is defined here (in UI project)
 #define RECORDING_PATTERN "(*.flv *.mp4 *.mov *.mkv *.ts *.m3u8)"
 
 void OBSRemux::BrowseInput()

@@ -680,6 +680,7 @@ static inline void copy_data(AVFrame *pic, const struct video_data *frame,
 
 static void receive_video(void *param, struct video_data *frame)
 {
+//yaoxin: if choose recording type as "Custom Output(FFmpeg)", file writer comes here
 	struct ffmpeg_output *output = param;
 	struct ffmpeg_data   *data   = &output->ff_data;
 

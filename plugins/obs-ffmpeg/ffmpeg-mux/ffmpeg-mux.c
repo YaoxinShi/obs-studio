@@ -617,17 +617,18 @@ static inline int64_t rescale_ts(struct ffmpeg_mux *ffm, int64_t val, int idx)
 }
 
 static inline bool ffmpeg_mux_packet(struct ffmpeg_mux *ffm, uint8_t *buf,
-		struct ffm_packet_info *info)
+	struct ffm_packet_info *info)
 {
+	//yaoxin: recording to file in ffmpeg_mux64.exe, will call ffmpeg API
 	int idx = get_index(ffm, info);
-	AVPacket packet = {0};
+	AVPacket packet = { 0 };
 
 	/* The muxer might not support video/audio, or multiple audio tracks */
 	if (idx == -1) {
 		return true;
 	}
 
-        av_init_packet(&packet);
+	av_init_packet(&packet);
 
 	packet.data = buf;
 	packet.size = (int)info->size;
@@ -639,6 +640,15 @@ static inline bool ffmpeg_mux_packet(struct ffmpeg_mux *ffm, uint8_t *buf,
 		packet.flags = AV_PKT_FLAG_KEY;
 
 	return av_interleaved_write_frame(ffm->output, &packet) >= 0;
+
+	//yaoxin: below code is for debug only, to check whether ffmpeg_mux success
+	//if return val < 0, means ffmpeg_mux fails
+	if (0)
+	{
+		int ret = av_interleaved_write_frame(ffm->output, &packet);
+		ret = av_interleaved_write_frame(ffm->output, NULL); //flush
+		return ret >= 0;
+	}
 }
 
 /* ------------------------------------------------------------------------- */
