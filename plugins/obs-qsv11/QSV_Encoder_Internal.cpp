@@ -531,6 +531,39 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 
 		if (!m_ofsES.fail())
 			m_ofsES.write((char*)(m_outBitstream.Data + m_outBitstream.DataOffset), m_outBitstream.DataLength);
+#if VP9_LOG
+		// VP9 bit stream from MSDK is in IVF format.
+		// The first frame comes together with 32-bytes IVF header. Other frames come individually.
+		// --------------------------------------------------
+		// | IVF header(32B), frame header(12B), frame data |
+		// | frame header(12B), frame data                  |
+		// | frame header(12B), frame data                  |
+		// | frame header(12B), frame data                  |
+		// | ......                                         |
+		// --------------------------------------------------
+		// The 32-byte IVF header is like:
+		//     bytes 0-3    signature: 'DKIF'
+		//     bytes 4-5    version (should be 0)
+		//     bytes 6-7    length of header in bytes
+		//     bytes 8-11   codec FourCC (e.g., 'VP80')
+		//     bytes 12-13  width in pixels
+		//     bytes 14-15  height in pixels
+		//     bytes 16-19  frame rate
+		//     bytes 20-23  time scale
+		//     bytes 24-27  number of frames in file
+		//     bytes 28-31  unused
+		// The 12-byte frame header is like:
+		//     bytes 0-3    size of frame in bytes (not including the 12-byte header)
+		//     bytes 4-11   64-bit presentation timestamp
+		//     bytes 12..   frame data
+		unsigned char * buf = (unsigned char*)(m_outBitstream.Data + m_outBitstream.DataOffset);
+		blog(LOG_INFO, "syx: [qsv-encode] frame size=%d, data: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+			m_outBitstream.DataLength,
+			buf[0], buf[1], buf[2], buf[3],
+			buf[4], buf[5], buf[6], buf[7],
+			buf[8], buf[9], buf[10], buf[11],
+			buf[12], buf[13], buf[14], buf[15]);
+#endif
 
         if (0)
         {

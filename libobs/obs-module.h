@@ -172,3 +172,5 @@ MODULE_EXPORT const char *obs_module_name(void);
 
 /** Optional: Returns a description of the module */
 MODULE_EXPORT const char *obs_module_description(void);
+
+#define VP9_LOG 1

@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "ffmpeg-mux.h"
+//#include <obs-module.h>
 
 #include <libavformat/avformat.h>
 
@@ -635,6 +636,14 @@ static inline bool ffmpeg_mux_packet(struct ffmpeg_mux *ffm, uint8_t *buf,
 	packet.stream_index = idx;
 	packet.pts = rescale_ts(ffm, info->pts, idx);
 	packet.dts = rescale_ts(ffm, info->dts, idx);
+#if 1 //VP9_LOG
+	// why not show in output window???
+	unsigned int * buff = (unsigned int*)(buf);
+	fprintf(stdout, "syx: [ffmpeg-mux] frame size=%d, data: %08x, %08x, %08x, %08x\n",
+		info->size,
+		buff[0], buff[1], buff[2], buff[3]);
+	fflush(stdout);
+#endif
 
 	if (info->keyframe)
 		packet.flags = AV_PKT_FLAG_KEY;

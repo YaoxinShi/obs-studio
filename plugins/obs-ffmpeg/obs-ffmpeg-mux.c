@@ -404,6 +404,16 @@ static bool write_packet(struct ffmpeg_muxer *stream,
 		return false;
 	}
 
+#if VP9_LOG
+	unsigned char * buf = (unsigned char*)(packet->data);
+	blog(LOG_INFO, "syx: [obs-ffmpeg] frame size=%d, data: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+		packet->size,
+		buf[0], buf[1], buf[2], buf[3],
+		buf[4], buf[5], buf[6], buf[7],
+		buf[8], buf[9], buf[10], buf[11],
+		buf[12], buf[13], buf[14], buf[15]);
+#endif
+
 	stream->total_bytes += packet->size;
 
 	if (0) // for debug only
