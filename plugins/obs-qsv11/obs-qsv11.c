@@ -1108,8 +1108,8 @@ static bool obs_qsv_sei_vp9(void *data, uint8_t **sei,size_t *size)
 	UNUSED_PARAMETER(sei);
 	UNUSED_PARAMETER(size);
 
-	*sei = obsqsv->sei;
-	*size = obsqsv->sei_size;
+	*sei = NULL; // obsqsv->sei;
+	*size = 0; // obsqsv->sei_size;
 	return true;
 }
 

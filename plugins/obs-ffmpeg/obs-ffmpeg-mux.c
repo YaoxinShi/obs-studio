@@ -236,6 +236,8 @@ static void build_command_line(struct ffmpeg_muxer *stream, struct dstr *cmd,
 		aencoders[num_tracks] = aencoder;
 		num_tracks++;
 	}
+	//ivf: disable audio for ivf
+	num_tracks = 0;
 
 	dstr_init_move_array(cmd, obs_module_file(FFMPEG_MUX));
 	dstr_insert_ch(cmd, 0, '\"');
@@ -258,11 +260,10 @@ static void build_command_line(struct ffmpeg_muxer *stream, struct dstr *cmd,
 		}
 	}
 
-	//yaoxin: I tried to hack the file format to ivf for vp9 container here.
+	//ivf: hack the file format to ivf for vp9 container here.
 	//(by changing ffmpeg_mux64.exe's input parameter)
-	//But it doesn't work. Maybe the ffmpeg bianry is not built with libvpx.
-	//dstr_replace(cmd, ".flv", ".ivf");
-	//dstr_replace(cmd, "h264", "vp9");
+	dstr_replace(cmd, ".flv", ".ivf");
+	dstr_replace(cmd, "h264", "vp9");
 	add_muxer_params(cmd, stream);
 }
 

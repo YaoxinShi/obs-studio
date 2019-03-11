@@ -738,6 +738,18 @@ static void send_first_video_packet(struct obs_encoder *encoder,
 	da_init(data);
 
 	if (!get_sei(encoder, &sei, &size) || !sei || !size) {
+		//ivf: skip 32-byte ivf header and 12-byte frame header, since ffmpeg-mux will add it
+		{
+			da_push_back_array(data, packet->data + 32 + 12, packet->size - 32 - 12);
+			first_packet = *packet;
+			first_packet.data = data.array;
+			first_packet.size = data.num;
+			cb->new_packet(cb->param, &first_packet);
+			cb->sent_first_packet = true;
+			da_free(data);
+			return;
+		}
+
 		cb->new_packet(cb->param, packet);
 		cb->sent_first_packet = true;
 		return;
@@ -763,7 +775,24 @@ static inline void send_packet(struct obs_encoder *encoder,
 	if (encoder->info.type == OBS_ENCODER_VIDEO && !cb->sent_first_packet)
 		send_first_video_packet(encoder, cb, packet);
 	else
+	{
+		//ivf: skip 12-byte frame header, since ffmpeg-mux will add it
+		if (encoder->info.type == OBS_ENCODER_VIDEO && cb->sent_first_packet)
+		{
+			DARRAY(uint8_t)       data;
+			struct encoder_packet later_packet;
+			da_init(data);
+			da_push_back_array(data, packet->data + 12, packet->size - 12);
+			later_packet = *packet;
+			later_packet.data = data.array;
+			later_packet.size = data.num;
+			cb->new_packet(cb->param, &later_packet);
+			da_free(data);
+			return;
+		}
+
 		cb->new_packet(cb->param, packet);
+	}
 }
 
 static void full_stop(struct obs_encoder *encoder)
