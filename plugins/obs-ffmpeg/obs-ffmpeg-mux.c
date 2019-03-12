@@ -268,7 +268,9 @@ static void build_command_line(struct ffmpeg_muxer *stream, struct dstr *cmd,
 	//(by changing ffmpeg_mux64.exe's input parameter)
 	if (strcmp(p, "vp9") == 0)
 	{
-		dstr_replace(cmd, ".flv", ".ivf");
+		//dstr_replace(cmd, ".flv", ".ivf");
+		dstr_replace(cmd, ".flv", ".webm"); // we can also hack to webm here. ffmpeg_mux64.exe also works.
+
 		// dstr_replace(cmd, "h264", "vp9"); // already change in "obs_qsv_encoder_vp9.codec"
 	}
 	add_muxer_params(cmd, stream);
