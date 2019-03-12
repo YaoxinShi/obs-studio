@@ -1132,7 +1132,7 @@ static void obs_qsv_video_info_vp9(void *data, struct video_scale_info *info)
 struct obs_encoder_info obs_qsv_encoder_vp9 = {
 	.id = "obs_qsv11_vp9",
 	.type = OBS_ENCODER_VIDEO,
-	.codec = "h264",
+	.codec = "vp9",
 	.get_name = obs_qsv_getname_vp9,
 	.create = obs_qsv_create_vp9,
 	.destroy = obs_qsv_destroy_vp9,

@@ -739,6 +739,7 @@ static void send_first_video_packet(struct obs_encoder *encoder,
 
 	if (!get_sei(encoder, &sei, &size) || !sei || !size) {
 		//ivf: skip 32-byte ivf header and 12-byte frame header, since ffmpeg-mux will add it
+		if (strcmp(encoder->info.codec, "vp9") == 0)
 		{
 			da_push_back_array(data, packet->data + 32 + 12, packet->size - 32 - 12);
 			first_packet = *packet;
@@ -777,7 +778,7 @@ static inline void send_packet(struct obs_encoder *encoder,
 	else
 	{
 		//ivf: skip 12-byte frame header, since ffmpeg-mux will add it
-		if (encoder->info.type == OBS_ENCODER_VIDEO && cb->sent_first_packet)
+		if (strcmp(encoder->info.codec, "vp9") == 0 && encoder->info.type == OBS_ENCODER_VIDEO && cb->sent_first_packet)
 		{
 			DARRAY(uint8_t)       data;
 			struct encoder_packet later_packet;

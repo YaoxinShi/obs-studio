@@ -226,6 +226,7 @@ static void build_command_line(struct ffmpeg_muxer *stream, struct dstr *cmd,
 	obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
 	obs_encoder_t *aencoders[MAX_AUDIO_MIXES];
 	int num_tracks = 0;
+	char * p = obs_encoder_get_codec(vencoder);
 
 	for (;;) {
 		obs_encoder_t *aencoder = obs_output_get_audio_encoder(
@@ -237,7 +238,10 @@ static void build_command_line(struct ffmpeg_muxer *stream, struct dstr *cmd,
 		num_tracks++;
 	}
 	//ivf: disable audio for ivf
-	num_tracks = 0;
+	if (strcmp(p, "vp9") == 0)
+	{
+		num_tracks = 0;
+	}
 
 	dstr_init_move_array(cmd, obs_module_file(FFMPEG_MUX));
 	dstr_insert_ch(cmd, 0, '\"');
@@ -262,8 +266,11 @@ static void build_command_line(struct ffmpeg_muxer *stream, struct dstr *cmd,
 
 	//ivf: hack the file format to ivf for vp9 container here.
 	//(by changing ffmpeg_mux64.exe's input parameter)
-	dstr_replace(cmd, ".flv", ".ivf");
-	dstr_replace(cmd, "h264", "vp9");
+	if (strcmp(p, "vp9") == 0)
+	{
+		dstr_replace(cmd, ".flv", ".ivf");
+		// dstr_replace(cmd, "h264", "vp9"); // already change in "obs_qsv_encoder_vp9.codec"
+	}
 	add_muxer_params(cmd, stream);
 }
 
