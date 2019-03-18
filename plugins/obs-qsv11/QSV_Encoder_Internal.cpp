@@ -255,15 +255,15 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	static mfxExtBuffer* extendedBuffers[2];
 	int iBuffers = 0;
 
+	memset(&m_co2, 0, sizeof(mfxExtCodingOption2));
+	m_co2.Header.BufferId = MFX_EXTBUFF_CODING_OPTION2;
+	m_co2.Header.BufferSz = sizeof(m_co2);
+	if (pParams->bMBBRC)
+		m_co2.MBBRC = MFX_CODINGOPTION_ON;
 	if (pParams->nRateControl == MFX_RATECONTROL_LA_ICQ ||
-	    pParams->nRateControl == MFX_RATECONTROL_LA) {
-
-		memset(&m_co2, 0, sizeof(mfxExtCodingOption2));
-		m_co2.Header.BufferId = MFX_EXTBUFF_CODING_OPTION;
-		m_co2.Header.BufferSz = sizeof(m_co2);
+		pParams->nRateControl == MFX_RATECONTROL_LA)
 		m_co2.LookAheadDepth = pParams->nLADEPTH;
-		extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co2;
-	}
+	extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co2;
 
 	if (iBuffers > 0) {
 		m_mfxEncParams.ExtParam = extendedBuffers;
