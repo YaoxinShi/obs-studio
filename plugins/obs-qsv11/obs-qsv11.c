@@ -159,6 +159,7 @@ static void obs_qsv_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "la_depth", 40);
 
 	obs_data_set_default_int(settings, "keyint_sec", 3);
+    obs_data_set_default_int(settings, "bframes", 1);
 }
 
 static inline void add_strings(obs_property_t *list, const char *const *strings)
@@ -180,6 +181,7 @@ static inline void add_strings(obs_property_t *list, const char *const *strings)
 #define TEXT_ICQ_QUALITY        obs_module_text("ICQQuality")
 #define TEXT_LA_DEPTH           obs_module_text("LookAheadDepth")
 #define TEXT_KEYINT_SEC         obs_module_text("KeyframeIntervalSec")
+#define TEXT_BFRAMES            obs_module_text("B Frames")
 
 static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p,
 	obs_data_t *settings)
@@ -276,6 +278,7 @@ static obs_properties_t *obs_qsv_props(void *unused)
 	obs_properties_add_int(props, "qpb", "QPB", 1, 51, 1);
 	obs_properties_add_int(props, "icq_quality", TEXT_ICQ_QUALITY, 1, 51, 1);
 	obs_properties_add_int(props, "la_depth", TEXT_LA_DEPTH, 10, 100, 1);
+    obs_properties_add_int(props, "bframes", TEXT_BFRAMES, 0, 3, 1);
 
 	return props;
 }
@@ -300,7 +303,7 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	int la_depth = (int)obs_data_get_int(settings, "la_depth");
 	int keyint_sec = (int)obs_data_get_int(settings, "keyint_sec");
 	bool cbr_override = obs_data_get_bool(settings, "cbr");
-	int bFrames = 7;
+	int bFrames = (int)obs_data_get_int(settings, "bframes");
 
 	if (obs_data_has_user_value(settings, "bf"))
 		bFrames = (int)obs_data_get_int(settings, "bf");
