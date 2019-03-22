@@ -161,6 +161,7 @@ static void obs_qsv_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "keyint_sec", 3);
     obs_data_set_default_int(settings, "bframes", 1);
 	obs_data_set_default_bool(settings, "mbbrc", true);
+	obs_data_set_default_bool(settings, "ffmode", false);
 }
 
 static inline void add_strings(obs_property_t *list, const char *const *strings)
@@ -184,11 +185,26 @@ static inline void add_strings(obs_property_t *list, const char *const *strings)
 #define TEXT_KEYINT_SEC         obs_module_text("KeyframeIntervalSec")
 #define TEXT_BFRAMES            obs_module_text("B Frames")
 #define TEXT_MBBRC              obs_module_text("Content Adaptive Quantization")
+#define TEXT_FF_MODE            obs_module_text("Fixed Function Mode")
 
 static inline bool is_skl_or_greater_platform()
 {
 	enum qsv_cpu_platform plat = qsv_get_cpu_platform();
 	return (plat >= QSV_CPU_PLATFORM_SKL);
+}
+
+static bool ffmode_toggled(obs_properties_t *ppts, obs_property_t *p, obs_data_t *settings)
+{
+	const bool ffmode = (bool)obs_data_get_bool(settings, "ffmode");
+
+	p = obs_properties_get(ppts, "bframes");
+	if (ffmode)
+		obs_data_set_int(settings, "bframes", 0);
+	else if (!obs_property_enabled(p))
+		obs_data_set_int(settings, "bframes", 1);
+	obs_property_set_enabled(p, !ffmode);
+
+	return true;
 }
 
 static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p,
@@ -236,6 +252,19 @@ static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p,
 
 	bVisible = astrcmpi(rate_control, "CBR") == 0 ||
 		astrcmpi(rate_control, "VBR") == 0 ||
+		astrcmpi(rate_control, "VCM") == 0 ||
+		astrcmpi(rate_control, "AVBR") == 0 ||
+		astrcmpi(rate_control, "CQP") == 0;
+	p = obs_properties_get(ppts, "ffmode");
+	obs_property_set_visible(p, bVisible);
+	if (!bVisible) {
+		obs_data_set_bool(settings, "ffmode", false);
+		p = obs_properties_get(ppts, "bframes");
+		obs_property_set_enabled(p, true);
+	}
+
+	bVisible = astrcmpi(rate_control, "CBR") == 0 ||
+		astrcmpi(rate_control, "VBR") == 0 ||
 		astrcmpi(rate_control, "AVBR") == 0;
 	p = obs_properties_get(ppts, "mbbrc");
 	obs_property_set_visible(p, bVisible);
@@ -259,7 +288,7 @@ static obs_properties_t *obs_qsv_props(void *unused)
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
-	obs_property_t *list;
+	obs_property_t *list, *checkbox;
 
 	list = obs_properties_add_list(props, "target_usage", TEXT_SPEED,
 		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -295,8 +324,11 @@ static obs_properties_t *obs_qsv_props(void *unused)
 	obs_properties_add_int(props, "la_depth", TEXT_LA_DEPTH, 10, 100, 1);
     obs_properties_add_int(props, "bframes", TEXT_BFRAMES, 0, 3, 1);
 
-	if (is_skl_or_greater_platform())
+	if (is_skl_or_greater_platform()) {
 		obs_properties_add_bool(props, "mbbrc", TEXT_MBBRC);
+		checkbox = obs_properties_add_bool(props, "ffmode", TEXT_FF_MODE);
+		obs_property_set_modified_callback(checkbox, ffmode_toggled);
+	}
 
 	return props;
 }
@@ -323,6 +355,7 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	bool cbr_override = obs_data_get_bool(settings, "cbr");
 	int bFrames = (int)obs_data_get_int(settings, "bframes");
 	bool mbbrc = obs_data_get_bool(settings, "mbbrc");
+	bool ffmode = (bool)obs_data_get_bool(settings, "ffmode");
 
 	if (obs_data_has_user_value(settings, "bf"))
 		bFrames = (int)obs_data_get_int(settings, "bf");
@@ -390,6 +423,7 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	obsqsv->params.nKeyIntSec = (mfxU16)keyint_sec;
 	obsqsv->params.nICQQuality = (mfxU16)icq_quality;
 	obsqsv->params.bMBBRC = mbbrc;
+	obsqsv->params.bFFMode = ffmode;
 
 	info("settings:\n\trate_control:   %s", rate_control);
 

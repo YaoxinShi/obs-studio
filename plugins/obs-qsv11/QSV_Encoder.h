@@ -119,6 +119,7 @@ typedef struct
 	mfxU16 nbFrames;
 	mfxU16 nICQQuality;
 	bool   bMBBRC;
+	bool   bFFMode;
 } qsv_param_t;
 
 enum qsv_cpu_platform {
