@@ -76,8 +76,9 @@ static const struct qsv_rate_control_info qsv_ratecontrols[] = {
 	{"CQP", false},
 	{"AVBR", false},
 	{"ICQ", true},
+	{"LA_CBR", true},
+	{"LA_VBR", true},
 	{"LA_ICQ", true},
-	{"LA", true},
 	{0, false}
 };
 static const char * const qsv_profile_names[] = {
