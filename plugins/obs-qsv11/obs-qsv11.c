@@ -229,7 +229,8 @@ static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p,
 	obs_property_set_visible(p, bVisible);
 
 	bVisible = astrcmpi(rate_control, "LA_ICQ") == 0 ||
-		astrcmpi(rate_control, "LA") == 0;
+		astrcmpi(rate_control, "LA_CBR") == 0 ||
+		astrcmpi(rate_control, "LA_VBR") == 0;
 	p = obs_properties_get(ppts, "la_depth");
 	obs_property_set_visible(p, bVisible);
 
@@ -367,8 +368,10 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 		obsqsv->params.nRateControl = MFX_RATECONTROL_ICQ;
 	else if (astrcmpi(rate_control, "LA_ICQ") == 0)
 		obsqsv->params.nRateControl = MFX_RATECONTROL_LA_ICQ;
-	else if (astrcmpi(rate_control, "LA") == 0)
+	else if (astrcmpi(rate_control, "LA_VBR") == 0)
 		obsqsv->params.nRateControl = MFX_RATECONTROL_LA;
+	else if (astrcmpi(rate_control, "LA_CBR") == 0)
+		obsqsv->params.nRateControl = MFX_RATECONTROL_LA_HRD;
 
 	obsqsv->params.nAsyncDepth = (mfxU16)async_depth;
 	obsqsv->params.nAccuracy = (mfxU16)accuracy;
@@ -410,7 +413,8 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 			(int)obsqsv->params.nICQQuality);
 
 	if (obsqsv->params.nRateControl == MFX_RATECONTROL_LA_ICQ ||
-	    obsqsv->params.nRateControl == MFX_RATECONTROL_LA)
+	    obsqsv->params.nRateControl == MFX_RATECONTROL_LA ||
+	    obsqsv->params.nRateControl == MFX_RATECONTROL_LA_HRD)
 		blog(LOG_INFO,
 			"\tLookahead Depth:%d",
 			(int)obsqsv->params.nLADEPTH);
