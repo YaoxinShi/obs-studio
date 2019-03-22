@@ -54,6 +54,7 @@ mfxStatus Initialize(mfxIMPL impl, mfxVersion ver, MFXVideoSession* pSession, mf
         pmfxAllocator->Lock   = simple_lock;
         pmfxAllocator->Unlock = simple_unlock;
         pmfxAllocator->GetHDL = simple_gethdl;
+        pmfxAllocator->CopyTex= simple_copytex;
 
         // Since we are using video memory we must provide Media SDK with an external allocator
         sts = pSession->SetFrameAllocator(pmfxAllocator);
@@ -81,6 +82,7 @@ mfxStatus Initialize(mfxIMPL impl, mfxVersion ver, MFXVideoSession* pSession, mf
         pmfxAllocator->Lock   = dx9_simple_lock;
         pmfxAllocator->Unlock = dx9_simple_unlock;
         pmfxAllocator->GetHDL = dx9_simple_gethdl;
+        pmfxAllocator->CopyTex= NULL;
 
         // Since we are using video memory we must provide Media SDK with an external allocator
         sts = pSession->SetFrameAllocator(pmfxAllocator);

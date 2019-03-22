@@ -52,7 +52,7 @@ mfxStatus simple_lock(mfxHDL pthis, mfxMemId mid, mfxFrameData* ptr);
 mfxStatus simple_unlock(mfxHDL pthis, mfxMemId mid, mfxFrameData* ptr);
 mfxStatus simple_gethdl(mfxHDL pthis, mfxMemId mid, mfxHDL* handle);
 mfxStatus simple_free(mfxHDL pthis, mfxFrameAllocResponse* response);
-
+mfxStatus simple_copytex(mfxHDL pthis, mfxMemId mid, mfxU32 tex_handle, mfxU64 lock_key, mfxU64 *next_key);
 
 
 // =================================================================

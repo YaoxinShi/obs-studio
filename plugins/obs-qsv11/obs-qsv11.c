@@ -111,6 +111,12 @@ static const char *obs_qsv_getname(void *type_data)
 	return "QuickSync H.264";
 }
 
+static const char *obs_qsv_getname_tex(void *type_data)
+{
+	UNUSED_PARAMETER(type_data);
+	return "QuickSync H.264 (new)";
+}
+
 static void obs_qsv_stop(void *data);
 
 static void clear_data(struct obs_qsv *obsqsv)
@@ -522,6 +528,15 @@ static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 	return obsqsv;
 }
 
+static void *obs_qsv_create_tex(obs_data_t *settings, obs_encoder_t *encoder)
+{
+	if (obs_nv12_tex_active()) {
+		return obs_qsv_create(settings, encoder);
+	} else {
+		return obs_encoder_create_rerouted(encoder, "obs_qsv11");
+	}
+}
+
 static bool obs_qsv_extra_data(void *data, uint8_t **extra_data, size_t *size)
 {
 	struct obs_qsv *obsqsv = data;
@@ -728,6 +743,48 @@ static bool obs_qsv_encode(void *data, struct encoder_frame *frame,
 	return true;
 }
 
+static bool obs_qsv_encode_tex(void *data, uint32_t handle, int64_t pts,
+	uint64_t lock_key, uint64_t *next_key,
+	struct encoder_packet *packet, bool *received_packet)
+{
+	struct obs_qsv *obsqsv = data;
+
+	if (handle == GS_INVALID_HANDLE) {
+		warn("Encode failed: bad texture handle");
+		*next_key = lock_key;
+		return false;
+	}
+
+	if (!packet || !received_packet)
+		return false;
+
+	EnterCriticalSection(&g_QsvCs);
+
+
+	video_t *video = obs_encoder_video(obsqsv->encoder);
+	const struct video_output_info *voi = video_output_get_info(video);
+
+	mfxBitstream *pBS = NULL;
+
+	int ret;
+
+	mfxU64 qsvPTS = pts * 90000 / voi->fps_num;
+
+	ret = qsv_encoder_encode_tex(obsqsv->context, qsvPTS, handle, lock_key, next_key, &pBS);
+
+	if (ret < 0) {
+		warn("encode failed");
+		LeaveCriticalSection(&g_QsvCs);
+		return false;
+	}
+
+	parse_packet(obsqsv, packet, pBS, voi->fps_num, received_packet);
+
+	LeaveCriticalSection(&g_QsvCs);
+
+	return true;
+}
+
 struct obs_encoder_info obs_qsv_encoder = {
 	.id = "obs_qsv11",
 	.type = OBS_ENCODER_VIDEO,
@@ -736,6 +793,23 @@ struct obs_encoder_info obs_qsv_encoder = {
 	.create = obs_qsv_create,
 	.destroy = obs_qsv_destroy,
 	.encode = obs_qsv_encode,
+	.update = obs_qsv_update,
+	.get_properties = obs_qsv_props,
+	.get_defaults = obs_qsv_defaults,
+	.get_extra_data = obs_qsv_extra_data,
+	.get_sei_data = obs_qsv_sei,
+	.get_video_info = obs_qsv_video_info
+};
+
+struct obs_encoder_info obs_qsv_encoder_tex = {
+	.id = "obs_qsv11_tex",
+	.type = OBS_ENCODER_VIDEO,
+	.codec = "h264",
+	.get_name = obs_qsv_getname_tex,
+	.create = obs_qsv_create_tex,
+	.destroy = obs_qsv_destroy,
+	.caps = OBS_ENCODER_CAP_PASS_TEXTURE,
+	.encode_texture = obs_qsv_encode_tex,
 	.update = obs_qsv_update,
 	.get_properties = obs_qsv_props,
 	.get_defaults = obs_qsv_defaults,
