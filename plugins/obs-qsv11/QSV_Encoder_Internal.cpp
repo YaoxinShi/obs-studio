@@ -313,6 +313,8 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	m_mfxEncParams.mfx.FrameInfo.CropW = pParams->nWidth;
 	m_mfxEncParams.mfx.FrameInfo.CropH = pParams->nHeight;
     m_mfxEncParams.mfx.GopRefDist = pParams->nbFrames + 1;
+	if (pParams->bFFMode)
+		m_mfxEncParams.mfx.LowPower = MFX_CODINGOPTION_ON;
 
 	m_mfxEncParams.mfx.RateControlMethod = pParams->nRateControl;
 
