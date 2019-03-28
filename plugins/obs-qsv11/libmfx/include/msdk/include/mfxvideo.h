@@ -56,6 +56,7 @@ typedef struct {
     mfxStatus  (MFX_CDECL  *Unlock)   (mfxHDL pthis, mfxMemId mid, mfxFrameData *ptr);
     mfxStatus  (MFX_CDECL  *GetHDL)   (mfxHDL pthis, mfxMemId mid, mfxHDL *handle);
     mfxStatus  (MFX_CDECL  *Free)     (mfxHDL pthis, mfxFrameAllocResponse *response);
+    mfxStatus  (MFX_CDECL  *CopyTex)  (mfxHDL pthis, mfxMemId mid, mfxU32 tex_handle, mfxU64 lock_key, mfxU64 *next_key);
 } mfxFrameAllocator;
 
 /* VideoCORE */
