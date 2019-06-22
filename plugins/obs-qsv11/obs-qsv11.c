@@ -60,6 +60,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <util/platform.h>
 #include <obs-module.h>
 #include <obs-avc.h>
+#include <d3d11.h>
+#include <dxgi1_2.h>
 
 #ifndef _STDINT_H_INCLUDED
 #define _STDINT_H_INCLUDED
@@ -556,11 +558,82 @@ static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 	return obsqsv;
 }
 
+static HANDLE get_lib(const char *lib)
+{
+	HMODULE mod = GetModuleHandleA(lib);
+	if (mod)
+		return mod;
+
+	mod = LoadLibraryA(lib);
+	if (!mod)
+		blog(LOG_INFO, "Failed to load %s", lib);
+	return mod;
+}
+
+typedef HRESULT(WINAPI *CREATEDXGIFACTORY1PROC)(REFIID, void **);
+
+static bool running_on_intel_gpu()
+{
+	HMODULE dxgi = get_lib("DXGI.dll");
+	CREATEDXGIFACTORY1PROC create_dxgi;
+	IDXGIFactory1 *factory;
+	IDXGIAdapter *adapter;
+	DXGI_ADAPTER_DESC desc;
+	HRESULT hr;
+
+	if (!dxgi) {
+		return false;
+	}
+	create_dxgi = (CREATEDXGIFACTORY1PROC)GetProcAddress(
+		dxgi, "CreateDXGIFactory1");
+
+	if (!create_dxgi) {
+		blog(LOG_INFO, "Failed to load D3D11/DXGI procedures");
+		return false;
+	}
+
+	hr = create_dxgi(&IID_IDXGIFactory1, &factory);
+	if (FAILED(hr)) {
+		blog(LOG_INFO, "CreateDXGIFactory1 failed");
+		return false;
+	}
+
+	hr = factory->lpVtbl->EnumAdapters(factory, 0, &adapter);
+	factory->lpVtbl->Release(factory);
+	if (FAILED(hr)) {
+		blog(LOG_INFO, "EnumAdapters failed");
+		return false;
+	}
+
+	hr = adapter->lpVtbl->GetDesc(adapter, &desc);
+	adapter->lpVtbl->Release(adapter);
+	if (FAILED(hr)) {
+		blog(LOG_INFO, "GetDesc failed");
+		return false;
+	}
+
+	/*check whether adapter 0 is Intel*/
+	if (desc.VendorId == 0x8086) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 static void *obs_qsv_create_tex(obs_data_t *settings, obs_encoder_t *encoder)
 {
+	if (!running_on_intel_gpu()) {
+		blog(LOG_INFO,
+		     ">>> app not on intel GPU, fall back to old qsv encoder");
+		return obs_encoder_create_rerouted(encoder, "obs_qsv11");
+	}
+
 	if (obs_nv12_tex_active()) {
+		blog(LOG_INFO, ">>> new qsv encoder");
 		return obs_qsv_create(settings, encoder);
 	} else {
+		blog(LOG_INFO,
+		     ">>> nv12 tex not active, fall back to old qsv encoder");
 		return obs_encoder_create_rerouted(encoder, "obs_qsv11");
 	}
 }
