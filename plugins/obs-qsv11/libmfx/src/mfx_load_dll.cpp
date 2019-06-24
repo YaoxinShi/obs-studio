@@ -37,6 +37,7 @@ File Name: mfx_load_dll.cpp
 #include <string.h>
 #include <windows.h>
 
+//change flag to debug with mfxplugin64_hw.dll for manually loading plugin
 #if !defined(_DEBUG)
 
 #if defined(_WIN64)

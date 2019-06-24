@@ -80,7 +80,6 @@ void qsv_encoder_version(unsigned short *major, unsigned short *minor)
 
 qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 {
-	bool false_value = false;
 
 	QSV_Encoder_Internal *pEncoder = new QSV_Encoder_Internal(impl, ver);
 	mfxStatus sts = pEncoder->Open(pParams);
@@ -156,11 +155,15 @@ qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 	return (qsv_t *) pEncoder;
 }
 
-int qsv_encoder_headers(qsv_t *pContext, uint8_t **pSPS, uint8_t **pPPS,
-		uint16_t *pnSPS, uint16_t *pnPPS)
+int qsv_encoder_headers(qsv_t *pContext, uint8_t **pVPS, uint8_t **pSPS, uint8_t **pPPS,
+		uint16_t *pnVPS, uint16_t *pnSPS, uint16_t *pnPPS)
 {
 	QSV_Encoder_Internal *pEncoder = (QSV_Encoder_Internal *)pContext;
 	pEncoder->GetSPSPPS(pSPS, pPPS, pnSPS, pnPPS);
+	if ((pVPS != NULL) && (pnVPS != NULL))
+	{
+		pEncoder->GetVPS(pVPS, pnVPS);
+	}
 
 	return 0;
 }

@@ -58,8 +58,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "QSV_Encoder.h"
 #include "mfxastructures.h"
 #include "mfxvideo++.h"
+#include "mfxplugin++.h"
 #include <VersionHelpers.h>
 #include <obs-module.h>
+#include <ctime>
 
 #define do_log(level, format, ...) \
 	blog(level, "[qsv encoder: '%s'] " format, \
@@ -75,6 +77,7 @@ mfxU16 QSV_Encoder_Internal::g_numEncodersOpen = 0;
 QSV_Encoder_Internal::QSV_Encoder_Internal(mfxIMPL& impl, mfxVersion& version) :
 	m_pmfxSurfaces(NULL),
 	m_pmfxENC(NULL),
+	m_nVPSBufferSize(100),
 	m_nSPSBufferSize(100),
 	m_nPPSBufferSize(100),
 	m_nTaskPool(0),
@@ -95,7 +98,7 @@ QSV_Encoder_Internal::QSV_Encoder_Internal(mfxIMPL& impl, mfxVersion& version) :
 		sts = m_session.Init(tempImpl, &version);
 		if (sts == MFX_ERR_NONE) {
 			m_session.QueryVersion(&version);
-			m_session.Close();
+			//m_session.Close();
 
 			// Use D3D11 surface
 			// m_bUseD3D11 = ((version.Major > 1) ||
@@ -167,9 +170,14 @@ mfxStatus QSV_Encoder_Internal::Open(qsv_param_t * pParams)
 
 	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
-	m_pmfxENC = new MFXVideoENCODE(m_session);
+	if (strcmp(pParams->codec, "hevc") == 0)
+	{
+		Init_H265_Params(pParams);
+	}
+	else
+		Init_H264_Params(pParams);
 
-	InitParams(pParams);
+	m_pmfxENC = new MFXVideoENCODE(m_session);
 
 	sts = m_pmfxENC->Query(&m_mfxEncParams, &m_mfxEncParams);
 	MSDK_IGNORE_MFX_STS(sts, MFX_WRN_INCOMPATIBLE_VIDEO_PARAM);
@@ -190,11 +198,122 @@ mfxStatus QSV_Encoder_Internal::Open(qsv_param_t * pParams)
 	if (sts >= MFX_ERR_NONE) {
 		g_numEncodersOpen++;
 	}
+#ifdef DUMP_BS
+	char cFileName[128];
+	std::time_t t = std::time(nullptr);
+	strftime(cFileName, 128, "C:\\dump\\%F %H-%M-%S.265", localtime(&t));
+	m_ofsES.open(cFileName, ios::out | ios::binary);
+
+	if(!m_ofsES.is_open())
+		cerr << "open failure as expected: " << strerror(errno) << '\n';
+#endif
 	return sts;
 }
 
 
-bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
+bool QSV_Encoder_Internal::Init_H265_Params(qsv_param_t * pParams)
+{
+	memset(&m_mfxEncParams, 0, sizeof(m_mfxEncParams));
+
+	m_mfxEncParams.mfx.CodecId = MFX_CODEC_HEVC;
+	if (pParams->nbFrames == 0)
+		m_mfxEncParams.mfx.LowPower = MFX_CODINGOPTION_ON;
+	else
+		m_mfxEncParams.mfx.LowPower = MFX_CODINGOPTION_OFF;
+
+	m_mfxEncParams.mfx.GopOptFlag = MFX_GOP_STRICT;
+	m_mfxEncParams.mfx.NumSlice = 1;
+	m_mfxEncParams.mfx.TargetUsage = pParams->nTargetUsage;
+	m_mfxEncParams.mfx.CodecProfile = pParams->nCodecProfile;
+
+	m_mfxEncParams.mfx.FrameInfo.FrameRateExtN = pParams->nFpsNum;
+	m_mfxEncParams.mfx.FrameInfo.FrameRateExtD = pParams->nFpsDen;
+	m_mfxEncParams.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
+	m_mfxEncParams.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
+	m_mfxEncParams.mfx.FrameInfo.PicStruct = MFX_PICSTRUCT_PROGRESSIVE;
+	m_mfxEncParams.mfx.FrameInfo.CropX = 0;
+	m_mfxEncParams.mfx.FrameInfo.CropY = 0;
+	m_mfxEncParams.mfx.FrameInfo.CropW = pParams->nWidth;
+	m_mfxEncParams.mfx.FrameInfo.CropH = pParams->nHeight;
+	m_mfxEncParams.mfx.GopRefDist = pParams->nbFrames + 1;
+
+	m_mfxEncParams.mfx.RateControlMethod = pParams->nRateControl;
+
+	switch (pParams->nRateControl) {
+	case MFX_RATECONTROL_CBR:
+		m_mfxEncParams.mfx.TargetKbps = pParams->nTargetBitRate;
+		break;
+	case MFX_RATECONTROL_VBR:
+	case MFX_RATECONTROL_VCM:
+		m_mfxEncParams.mfx.TargetKbps = pParams->nTargetBitRate;
+		m_mfxEncParams.mfx.MaxKbps = pParams->nMaxBitRate;
+		break;
+	case MFX_RATECONTROL_CQP:
+		m_mfxEncParams.mfx.QPI = pParams->nQPI;
+		m_mfxEncParams.mfx.QPB = pParams->nQPB;
+		m_mfxEncParams.mfx.QPP = pParams->nQPP;
+		break;
+	case MFX_RATECONTROL_AVBR:
+		m_mfxEncParams.mfx.TargetKbps = pParams->nTargetBitRate;
+		m_mfxEncParams.mfx.Accuracy = pParams->nAccuracy;
+		m_mfxEncParams.mfx.Convergence = pParams->nConvergence;
+		break;
+	case MFX_RATECONTROL_ICQ:
+		m_mfxEncParams.mfx.ICQQuality = pParams->nICQQuality;
+		break;
+	case MFX_RATECONTROL_LA:
+		m_mfxEncParams.mfx.TargetKbps = pParams->nTargetBitRate;
+		break;
+	case MFX_RATECONTROL_LA_ICQ:
+		m_mfxEncParams.mfx.ICQQuality = pParams->nICQQuality;
+		break;
+	case MFX_RATECONTROL_LA_HRD:
+		m_mfxEncParams.mfx.TargetKbps = pParams->nTargetBitRate;
+		m_mfxEncParams.mfx.MaxKbps = pParams->nTargetBitRate;
+		break;
+	default:
+		break;
+	}
+
+	m_mfxEncParams.AsyncDepth = pParams->nAsyncDepth;
+	m_mfxEncParams.mfx.GopPicSize = (mfxU16)(pParams->nKeyIntSec *
+		pParams->nFpsNum / (float)pParams->nFpsDen);
+
+	static mfxExtBuffer* extendedBuffers[2];
+	int iBuffers = 0;
+
+	memset(&m_co2, 0, sizeof(mfxExtCodingOption2));
+	m_co2.Header.BufferId = MFX_EXTBUFF_CODING_OPTION2;
+	m_co2.Header.BufferSz = sizeof(m_co2);
+	//if (pParams->bMBBRC)
+	//	m_co2.MBBRC = MFX_CODINGOPTION_ON;
+	if (pParams->nRateControl == MFX_RATECONTROL_LA_ICQ ||
+		pParams->nRateControl == MFX_RATECONTROL_LA)
+		m_co2.LookAheadDepth = pParams->nLADEPTH;
+	if (pParams->nbFrames > 1)
+		m_co2.BRefType = MFX_B_REF_PYRAMID;
+	extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co2;
+
+	if (iBuffers > 0) {
+		m_mfxEncParams.ExtParam = extendedBuffers;
+		m_mfxEncParams.NumExtParam = (mfxU16)iBuffers;
+	}
+
+	// Width must be a multiple of 16
+	// Height must be a multiple of 16 in case of frame picture and a
+	// multiple of 32 in case of field picture
+	m_mfxEncParams.mfx.FrameInfo.Width = MSDK_ALIGN16(pParams->nWidth);
+	m_mfxEncParams.mfx.FrameInfo.Height = MSDK_ALIGN16(pParams->nHeight);
+
+	if (m_bUseD3D11 || m_bD3D9HACK)
+		m_mfxEncParams.IOPattern = MFX_IOPATTERN_IN_VIDEO_MEMORY;
+	else
+		m_mfxEncParams.IOPattern = MFX_IOPATTERN_IN_SYSTEM_MEMORY;
+
+	return true;
+}
+
+bool QSV_Encoder_Internal::Init_H264_Params(qsv_param_t * pParams)
 {
 	memset(&m_mfxEncParams, 0, sizeof(m_mfxEncParams));
 
@@ -295,6 +414,16 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	return true;
 }
 
+mfxStatus QSV_Encoder_Internal::Load_HEVC_Plugin()
+{
+	mfxStatus sts = MFX_ERR_NONE;
+
+	//check for debug mode.... will not work if in debug
+	sts = MFXVideoUSER_Load(m_session, &MFX_PLUGINID_HEVCE_HW, 1);
+
+	return sts;
+}
+
 mfxStatus QSV_Encoder_Internal::AllocateSurfaces()
 {
 	// Query number of required surfaces for encoder
@@ -363,22 +492,30 @@ mfxStatus QSV_Encoder_Internal::GetVideoParam()
 	memset(&m_parameter, 0, sizeof(m_parameter));
 	opt.Header.BufferId = MFX_EXTBUFF_CODING_OPTION_SPSPPS;
 	opt.Header.BufferSz = sizeof(mfxExtCodingOptionSPSPPS);
+	mfxExtCodingOptionVPS opt2;
+	opt2.Header.BufferId = MFX_EXTBUFF_CODING_OPTION_VPS;
+	opt2.Header.BufferSz = sizeof(mfxExtCodingOptionVPS);
 
-	static mfxExtBuffer* extendedBuffers[1];
+	static mfxExtBuffer* extendedBuffers[2];
 	extendedBuffers[0] = (mfxExtBuffer*)& opt;
+	extendedBuffers[1] = (mfxExtBuffer*)& opt2;
 	m_parameter.ExtParam = extendedBuffers;
-	m_parameter.NumExtParam = 1;
+	m_parameter.NumExtParam = m_mfxEncParams.mfx.CodecId == MFX_CODEC_HEVC ? 2 : 1;
 
 	opt.SPSBuffer = m_SPSBuffer;
 	opt.PPSBuffer = m_PPSBuffer;
 	opt.SPSBufSize = 100; //  m_nSPSBufferSize;
 	opt.PPSBufSize = 100; //  m_nPPSBufferSize;
 
+	opt2.VPSBuffer = m_VPSBuffer;
+	opt2.VPSBufSize = 100; //  m_nVPSBufferSize;
+
 	mfxStatus sts = m_pmfxENC->GetVideoParam(&m_parameter);
 	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
 	m_nSPSBufferSize = opt.SPSBufSize;
 	m_nPPSBufferSize = opt.PPSBufSize;
+	m_nVPSBufferSize = opt2.VPSBufSize;
 
 	return sts;
 }
@@ -390,6 +527,12 @@ void QSV_Encoder_Internal::GetSPSPPS(mfxU8 **pSPSBuf, mfxU8 **pPPSBuf,
 	*pPPSBuf = m_PPSBuffer;
 	*pnSPSBuf = m_nSPSBufferSize;
 	*pnPPSBuf = m_nPPSBufferSize;
+}
+
+void QSV_Encoder_Internal::GetVPS(mfxU8 **pVPSBuf, mfxU16 *pnVPSBuf)
+{
+	*pVPSBuf = m_VPSBuffer;
+	*pnVPSBuf = m_nVPSBufferSize;
 }
 
 mfxStatus QSV_Encoder_Internal::InitBitstream()
@@ -507,6 +650,10 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 		nTaskIdx = m_nFirstSyncTask;
 		m_nFirstSyncTask = (m_nFirstSyncTask + 1) % m_nTaskPool;
 		*pBS = &m_outBitstream;
+#ifdef DUMP_BS
+		if (!m_ofsES.fail())
+			m_ofsES.write((char*)(m_outBitstream.Data + m_outBitstream.DataOffset), m_outBitstream.DataLength);
+#endif
 
 #if 0
 		info("MSDK Encode:\n"
@@ -600,6 +747,8 @@ mfxStatus QSV_Encoder_Internal::ClearData()
 				delete m_pmfxSurfaces[i]->Data.Y;
 
 			delete m_pmfxSurfaces[i];
+			if(m_pmfxSurfaces)
+				delete m_pmfxSurfaces[i];
 		}
 		MSDK_SAFE_DELETE_ARRAY(m_pmfxSurfaces);
 	}
@@ -609,6 +758,11 @@ mfxStatus QSV_Encoder_Internal::ClearData()
 			delete m_pTaskPool[i].mfxBS.Data;
 		MSDK_SAFE_DELETE_ARRAY(m_pTaskPool);
 	}
+
+#ifdef DUMP_BS
+	if (!m_ofsES.fail())
+		m_ofsES.close();
+#endif
 
 	if (m_outBitstream.Data)
 	{

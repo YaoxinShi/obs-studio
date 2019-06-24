@@ -32,6 +32,7 @@ set(obs-qsv11_libmfx_HEADERS
 	libmfx/include/msdk/include/mfxvideo.h
 	libmfx/include/msdk/include/mfxvideo++.h
 	libmfx/include/msdk/include/mfxvstructures.h
+	libmfx/include/msdk/include/vm/so_defs.h
 	libmfx/include/mfx_critical_section.h
 	libmfx/include/mfx_dispatcher.h
 	libmfx/include/mfx_dispatcher_defs.h
@@ -55,6 +56,7 @@ set(obs-qsv11_SOURCES
 	device_directx9.cpp
 	QSV_Encoder.cpp
 	QSV_Encoder_Internal.cpp
+	obs-qsv-h265.c
 	obs-qsv11.c
 	obs-qsv11-plugin-main.c)
 
@@ -66,6 +68,7 @@ set(obs-qsv11_HEADERS
 	device_directx9.h
 	common_utils.h
 	QSV_Encoder.h
+	sample_types.h
 	QSV_Encoder_Internal.h)
 
 add_library(obs-qsv11 MODULE

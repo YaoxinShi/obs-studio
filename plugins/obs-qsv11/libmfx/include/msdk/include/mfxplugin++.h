@@ -33,6 +33,7 @@ File Name: mfxplugin++.h
 #define __MFXPLUGINPLUSPLUS_H
 
 #include "mfxplugin.h"
+#include <stddef.h>
 
 // base class for MFXVideoUSER/MFXAudioUSER API
 

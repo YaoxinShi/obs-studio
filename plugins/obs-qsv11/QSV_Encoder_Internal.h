@@ -58,6 +58,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mfxvideo++.h"
 #include "QSV_Encoder.h"
 #include "common_utils.h"
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+#include <memory>
+
+#define DUMP_BS
 
 class QSV_Encoder_Internal
 {
@@ -66,6 +73,7 @@ public:
 	~QSV_Encoder_Internal();
 
 	mfxStatus    Open(qsv_param_t * pParams);
+	void         GetVPS(mfxU8 **pVPSBuf, mfxU16 *pnVPSBuf);
 	void         GetSPSPPS(mfxU8 **pSPSBuf, mfxU8 **pPPSBuf,
 			mfxU16 *pnSPSBuf, mfxU16 *pnPPSBuf);
 	mfxStatus    Encode(uint64_t ts, uint8_t *pDataY, uint8_t *pDataUV,
@@ -75,7 +83,9 @@ public:
 	mfxStatus    Reset(qsv_param_t *pParams);
 
 protected:
-	bool         InitParams(qsv_param_t * pParams);
+	bool         Init_H264_Params(qsv_param_t * pParams);
+	bool         Init_H265_Params(qsv_param_t * pParams);
+	mfxStatus    Load_HEVC_Plugin();
 	mfxStatus    AllocateSurfaces();
 	mfxStatus    GetVideoParam();
 	mfxStatus    InitBitstream();
@@ -94,8 +104,10 @@ private:
 	mfxFrameSurface1**             m_pmfxSurfaces;
 	mfxU16                         m_nSurfNum;
 	MFXVideoENCODE*                m_pmfxENC;
+	mfxU8                          m_VPSBuffer[100];
 	mfxU8                          m_SPSBuffer[100];
 	mfxU8                          m_PPSBuffer[100];
+	mfxU16                         m_nVPSBufferSize;
 	mfxU16                         m_nSPSBufferSize;
 	mfxU16                         m_nPPSBufferSize;
 	mfxVideoParam                  m_parameter;
@@ -111,5 +123,8 @@ private:
 	bool                           m_bD3D9HACK;
 	static mfxU16                  g_numEncodersOpen;
 	static mfxHDL                  g_DX_Handle; // we only want one handle for all instances to use;
+#ifdef DUMP_BS
+	ofstream                       m_ofsES;
+#endif
 };
 

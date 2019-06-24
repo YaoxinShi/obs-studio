@@ -59,6 +59,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <Windows.h>
 #include "mfxstructures.h"
 #include <stdint.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,10 +81,14 @@ static const struct qsv_rate_control_info qsv_ratecontrols[] = {
 	{"LA", true},
 	{0, false}
 };
-static const char * const qsv_profile_names[] = {
+static const char * const qsv_h264_profile_names[] = {
 	"high",
 	"main",
 	"baseline",
+	0
+};
+static const char * const qsv_h265_profile_names[] = {
+	"main",
 	0
 };
 static const char * const qsv_usage_names[] = {
@@ -93,10 +98,20 @@ static const char * const qsv_usage_names[] = {
 	0
 };
 
+static const char * const qsv_b_frames[] = {
+	"0",
+	"1",
+	"3",
+	"7",
+	//"auto",
+	0
+};
+
 typedef struct qsv_t qsv_t;
 
 typedef struct
 {
+	const char* codec;
 	mfxU16 nTargetUsage; /* 1 through 7, 1 being best quality and 7
 				being the best speed */
 	mfxU16 nWidth;       /* source picture width */
@@ -114,6 +129,7 @@ typedef struct
 	mfxU16 nQPP;
 	mfxU16 nQPB;
 	mfxU16 nLADEPTH;
+	mfxU16 nKeyInt;
 	mfxU16 nKeyIntSec;
 	mfxU16 nbFrames;
 	mfxU16 nICQQuality;
@@ -127,6 +143,8 @@ enum qsv_cpu_platform {
 	QSV_CPU_PLATFORM_SLM,
 	QSV_CPU_PLATFORM_CHT,
 	QSV_CPU_PLATFORM_HSW,
+	QSV_CPU_PLATFORM_BDW,
+	QSV_CPU_PLATFORM_SKL,
 	QSV_CPU_PLATFORM_INTEL
 };
 
@@ -140,8 +158,8 @@ void qsv_encoder_version(unsigned short *major, unsigned short *minor);
 qsv_t *qsv_encoder_open( qsv_param_t * );
 int qsv_encoder_encode(qsv_t *, uint64_t, uint8_t *, uint8_t *, uint32_t,
 		uint32_t, mfxBitstream **pBS);
-int qsv_encoder_headers(qsv_t *, uint8_t **pSPS, uint8_t **pPPS,
-		uint16_t *pnSPS, uint16_t *pnPPS);
+int qsv_encoder_headers(qsv_t *, uint8_t **pVPS, uint8_t **pSPS, uint8_t **pPPS,
+		uint16_t *pnVPS, uint16_t *pnSPS, uint16_t *pnPPS);
 enum qsv_cpu_platform qsv_get_cpu_platform();
 
 #ifdef __cplusplus

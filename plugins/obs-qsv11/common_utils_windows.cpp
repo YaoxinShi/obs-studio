@@ -33,8 +33,8 @@ mfxStatus Initialize(mfxIMPL impl, mfxVersion ver, MFXVideoSession* pSession, mf
     // If mfxFrameAllocator is provided it means we need to setup DirectX device and memory allocator
     if (pmfxAllocator && !dx9hack) {
         // Initialize Intel Media SDK Session
-        sts = pSession->Init(impl, &ver);
-        MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
+        //sts = pSession->Init(impl, &ver);
+        //MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
         // Create DirectX device context
         if (deviceHandle == NULL || *deviceHandle == NULL) {
@@ -115,6 +115,54 @@ double TimeDiffMsec(mfxTime tfinish, mfxTime tstart)
 
     double freq = (double)tFreq.QuadPart;
     return 1000.0 * ((double)tfinish.QuadPart - (double)tstart.QuadPart) / freq;
+}
+
+namespace {
+	int g_trace_level = MSDK_TRACE_LEVEL_INFO;
+}
+
+int msdk_trace_get_level() {
+	return g_trace_level;
+}
+
+void msdk_trace_set_level(int newLevel) {
+	g_trace_level = newLevel;
+}
+
+bool msdk_trace_is_printable(int level) {
+	return g_trace_level >= level;
+}
+
+msdk_ostream & operator <<(msdk_ostream & os, MsdkTraceLevel tl) {
+	switch (tl)
+	{
+	case MSDK_TRACE_LEVEL_CRITICAL:
+		os << MSDK_STRING("CRITICAL");
+		break;
+	case MSDK_TRACE_LEVEL_ERROR:
+		os << MSDK_STRING("ERROR");
+		break;
+	case MSDK_TRACE_LEVEL_WARNING:
+		os << MSDK_STRING("WARNING");
+		break;
+	case MSDK_TRACE_LEVEL_INFO:
+		os << MSDK_STRING("INFO");
+		break;
+	case MSDK_TRACE_LEVEL_DEBUG:
+		os << MSDK_STRING("DEBUG");
+		break;
+	default:
+		break;
+	}
+	return os;
+}
+
+msdk_string NoFullPath(const msdk_string & file_path) {
+	size_t pos = file_path.find_last_of(MSDK_STRING("\\/"));
+	if (pos != msdk_string::npos) {
+		return file_path.substr(pos + 1);
+	}
+	return file_path;
 }
 
 /* (Hugh) Functions currently unused */

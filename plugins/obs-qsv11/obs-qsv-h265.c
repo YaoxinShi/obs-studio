@@ -105,11 +105,16 @@ static int64_t          g_pts2dtsShift;
 static int64_t          g_prevDts;
 static bool             g_bFirst;
 
+bool is_icl_or_greater_platform() //for hevc may change to check for ICL or greater. Keeping @ SKL for now.
+{
+	enum qsv_cpu_platform plat = qsv_get_cpu_platform();
+	return (plat >= QSV_CPU_PLATFORM_SKL);
+}
 
-static const char *obs_qsv_getname(void *type_data)
+static const char *obs_qsv_h265_getname(void *type_data)
 {
 	UNUSED_PARAMETER(type_data);
-	return "QuickSync H.264";
+	return "Intel QuickSync H.265";
 }
 
 static void obs_qsv_stop(void *data);
@@ -130,7 +135,7 @@ static void clear_data(struct obs_qsv *obsqsv)
 	}
 }
 
-static void obs_qsv_destroy(void *data)
+static void obs_qsv_h265_destroy(void *data)
 {
 	struct obs_qsv *obsqsv = (struct obs_qsv *)data;
 
@@ -142,24 +147,23 @@ static void obs_qsv_destroy(void *data)
 	}
 }
 
-static void obs_qsv_defaults(obs_data_t *settings)
+static void obs_qsv_h265_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_string(settings, "target_usage", "balanced");
 	obs_data_set_default_int(settings, "bitrate", 2500);
 	obs_data_set_default_int(settings, "max_bitrate", 3000);
-	obs_data_set_default_string(settings, "profile", "main");
 	obs_data_set_default_int(settings, "async_depth", 4);
 	obs_data_set_default_string(settings, "rate_control", "CBR");
-
 	obs_data_set_default_int(settings, "accuracy", 1000);
 	obs_data_set_default_int(settings, "convergence", 1);
 	obs_data_set_default_int(settings, "qpi", 23);
 	obs_data_set_default_int(settings, "qpp", 23);
 	obs_data_set_default_int(settings, "qpb", 23);
 	obs_data_set_default_int(settings, "icq_quality", 23);
-	obs_data_set_default_int(settings, "la_depth", 40);
-
-	obs_data_set_default_int(settings, "keyint_sec", 3);
+	obs_data_set_default_int(settings, "la_depth", 15);
+	obs_data_set_default_int(settings, "keyint", 60);
+	obs_data_set_default_string(settings, "bframes", "0");
+	obs_data_set_default_bool(settings, "mbbrc", true);
 }
 
 static inline void add_strings(obs_property_t *list, const char *const *strings)
@@ -173,14 +177,21 @@ static inline void add_strings(obs_property_t *list, const char *const *strings)
 #define TEXT_SPEED              obs_module_text("TargetUsage")
 #define TEXT_TARGET_BITRATE     obs_module_text("Bitrate")
 #define TEXT_MAX_BITRATE        obs_module_text("MaxBitrate")
-#define TEXT_PROFILE            obs_module_text("Profile")
 #define TEXT_ASYNC_DEPTH        obs_module_text("AsyncDepth")
 #define TEXT_RATE_CONTROL       obs_module_text("RateControl")
 #define TEXT_ACCURACY           obs_module_text("Accuracy")
 #define TEXT_CONVERGENCE        obs_module_text("Convergence")
 #define TEXT_ICQ_QUALITY        obs_module_text("ICQQuality")
 #define TEXT_LA_DEPTH           obs_module_text("LookAheadDepth")
-#define TEXT_KEYINT_SEC         obs_module_text("KeyframeIntervalSec")
+#define TEXT_KEYINT             obs_module_text("KeyframeInterval")
+#define TEXT_MBBRC              obs_module_text("Content Adaptive Quantization")
+#define TEXT_BFRAMES            obs_module_text("B Frames")
+
+static inline bool is_skl_or_greater_platform()
+{
+	enum qsv_cpu_platform plat = qsv_get_cpu_platform();
+	return (plat >= QSV_CPU_PLATFORM_SKL);
+}
 
 static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p,
 	obs_data_t *settings)
@@ -220,15 +231,22 @@ static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p,
 	obs_property_set_visible(p, bVisible);
 
 	bVisible = astrcmpi(rate_control, "LA_ICQ") == 0 ||
-		astrcmpi(rate_control, "LA") == 0;
+		astrcmpi(rate_control, "LA_CBR") == 0 ||
+		astrcmpi(rate_control, "LA_VBR") == 0;
 	p = obs_properties_get(ppts, "la_depth");
+	obs_property_set_visible(p, bVisible);
+
+	bVisible = astrcmpi(rate_control, "CBR") == 0 ||
+		astrcmpi(rate_control, "VBR") == 0 ||
+		astrcmpi(rate_control, "AVBR") == 0;
+	p = obs_properties_get(ppts, "mbbrc");
 	obs_property_set_visible(p, bVisible);
 
 	return true;
 }
 
 static inline void add_rate_controls(obs_property_t *list,
-		const struct qsv_rate_control_info *rc)
+	const struct qsv_rate_control_info *rc)
 {
 	enum qsv_cpu_platform plat = qsv_get_cpu_platform();
 	while (rc->name) {
@@ -238,7 +256,7 @@ static inline void add_rate_controls(obs_property_t *list,
 	}
 }
 
-static obs_properties_t *obs_qsv_props(void *unused)
+static obs_properties_t *obs_qsv_h265_props(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 
@@ -249,11 +267,7 @@ static obs_properties_t *obs_qsv_props(void *unused)
 		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	add_strings(list, qsv_usage_names);
 
-	list = obs_properties_add_list(props, "profile", TEXT_PROFILE,
-		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
-	add_strings(list, qsv_h264_profile_names);
-
-	obs_properties_add_int(props, "keyint_sec", TEXT_KEYINT_SEC, 1, 20, 1);
+	obs_properties_add_int(props, "keyint", TEXT_KEYINT, 1, 32767, 1);
 	obs_properties_add_int(props, "async_depth", TEXT_ASYNC_DEPTH, 1, 7, 1);
 
 	list = obs_properties_add_list(props, "rate_control", TEXT_RATE_CONTROL,
@@ -261,15 +275,10 @@ static obs_properties_t *obs_qsv_props(void *unused)
 	add_rate_controls(list, qsv_ratecontrols);
 	obs_property_set_modified_callback(list, rate_control_modified);
 
-	obs_property_t *p;
-	p = obs_properties_add_int(props, "bitrate", TEXT_TARGET_BITRATE, 50,
-			10000000, 50);
-	obs_property_int_set_suffix(p, " Kbps");
-
-	p = obs_properties_add_int(props, "max_bitrate", TEXT_MAX_BITRATE, 50,
-			10000000, 50);
-	obs_property_int_set_suffix(p, " Kbps");
-
+	obs_properties_add_int(props, "bitrate", TEXT_TARGET_BITRATE, 50,
+		10000000, 1);
+	obs_properties_add_int(props, "max_bitrate", TEXT_MAX_BITRATE, 50,
+		10000000, 1);
 	obs_properties_add_int(props, "accuracy", TEXT_ACCURACY, 0, 10000, 1);
 	obs_properties_add_int(props, "convergence", TEXT_CONVERGENCE, 0, 10, 1);
 	obs_properties_add_int(props, "qpi", "QPI", 1, 51, 1);
@@ -277,18 +286,24 @@ static obs_properties_t *obs_qsv_props(void *unused)
 	obs_properties_add_int(props, "qpb", "QPB", 1, 51, 1);
 	obs_properties_add_int(props, "icq_quality", TEXT_ICQ_QUALITY, 1, 51, 1);
 	obs_properties_add_int(props, "la_depth", TEXT_LA_DEPTH, 10, 100, 1);
+	list = obs_properties_add_list(props, "bframes", TEXT_BFRAMES,
+		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	add_strings(list, qsv_b_frames);
+
+	if (is_skl_or_greater_platform())
+		obs_properties_add_bool(props, "mbbrc", TEXT_MBBRC);
 
 	return props;
 }
 
-static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
+static void obs_qsv_h265_update(struct obs_qsv *obsqsv, obs_data_t *settings)
 {
 	video_t *video = obs_encoder_video(obsqsv->encoder);
 	const struct video_output_info *voi = video_output_get_info(video);
 
 	const char *target_usage = obs_data_get_string(settings, "target_usage");
-	const char *profile = obs_data_get_string(settings, "profile");
 	const char *rate_control = obs_data_get_string(settings, "rate_control");
+	const char *bframes = obs_data_get_string(settings, "bframes");
 	int async_depth = (int)obs_data_get_int(settings, "async_depth");
 	int target_bitrate = (int)obs_data_get_int(settings, "bitrate");
 	int max_bitrate = (int)obs_data_get_int(settings, "max_bitrate");
@@ -299,12 +314,9 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	int qpb = (int)obs_data_get_int(settings, "qpb");
 	int icq_quality = (int)obs_data_get_int(settings, "icq_quality");
 	int la_depth = (int)obs_data_get_int(settings, "la_depth");
-	int keyint_sec = (int)obs_data_get_int(settings, "keyint_sec");
+	int keyint = (int)obs_data_get_int(settings, "keyint");
 	bool cbr_override = obs_data_get_bool(settings, "cbr");
-	int bFrames = 7;
-
-	if (obs_data_has_user_value(settings, "bf"))
-		bFrames = (int)obs_data_get_int(settings, "bf");
+	bool mbbrc = obs_data_get_bool(settings, "mbbrc");
 
 	int width = (int)obs_encoder_get_width(obsqsv->encoder);
 	int height = (int)obs_encoder_get_height(obsqsv->encoder);
@@ -315,21 +327,17 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	else if (astrcmpi(target_usage, "speed") == 0)
 		obsqsv->params.nTargetUsage = MFX_TARGETUSAGE_BEST_SPEED;
 
-	if (astrcmpi(profile, "baseline") == 0)
-		obsqsv->params.nCodecProfile = MFX_PROFILE_AVC_BASELINE;
-	else if (astrcmpi(profile, "main") == 0)
-		obsqsv->params.nCodecProfile = MFX_PROFILE_AVC_MAIN;
-	else if (astrcmpi(profile, "high") == 0)
-		obsqsv->params.nCodecProfile = MFX_PROFILE_AVC_HIGH;
+	obsqsv->params.nCodecProfile = MFX_PROFILE_HEVC_MAIN;
+
 
 	/* internal convenience parameter, overrides rate control param
-	 * XXX: Deprecated */
+	* XXX: Deprecated */
 	if (cbr_override) {
 		warn("\"cbr\" setting has been deprecated for all encoders!  "
-		     "Please set \"rate_control\" to \"CBR\" instead.  "
-		     "Forcing CBR mode.  "
-		     "(Note to all: this is why you shouldn't use strings for "
-		     "common settings)");
+			"Please set \"rate_control\" to \"CBR\" instead.  "
+			"Forcing CBR mode.  "
+			"(Note to all: this is why you shouldn't use strings for "
+			"common settings)");
 		rate_control = "CBR";
 	}
 
@@ -347,8 +355,10 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 		obsqsv->params.nRateControl = MFX_RATECONTROL_ICQ;
 	else if (astrcmpi(rate_control, "LA_ICQ") == 0)
 		obsqsv->params.nRateControl = MFX_RATECONTROL_LA_ICQ;
-	else if (astrcmpi(rate_control, "LA") == 0)
+	else if (astrcmpi(rate_control, "LA_VBR") == 0)
 		obsqsv->params.nRateControl = MFX_RATECONTROL_LA;
+	else if (astrcmpi(rate_control, "LA_CBR") == 0)
+		obsqsv->params.nRateControl = MFX_RATECONTROL_LA_HRD;
 
 	obsqsv->params.codec = obsqsv->encoder->info.codec;
 	obsqsv->params.nAsyncDepth = (mfxU16)async_depth;
@@ -364,33 +374,39 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	obsqsv->params.nHeight = (mfxU16)height;
 	obsqsv->params.nFpsNum = (mfxU16)voi->fps_num;
 	obsqsv->params.nFpsDen = (mfxU16)voi->fps_den;
-	obsqsv->params.nbFrames = (mfxU16)bFrames;
-	obsqsv->params.nKeyIntSec = (mfxU16)keyint_sec;
+	obsqsv->params.nKeyIntSec = (mfxU16)keyint;
 	obsqsv->params.nICQQuality = (mfxU16)icq_quality;
+	//obsqsv->params.bMBBRC = mbbrc;
+
+	if (astrcmpi(bframes, "auto") == 0)
+		obsqsv->params.nbFrames = 0;
+	else
+		obsqsv->params.nbFrames = (mfxU16)atoi(bframes);
 
 	info("settings:\n\trate_control:   %s", rate_control);
 
 	if (obsqsv->params.nRateControl != MFX_RATECONTROL_LA_ICQ &&
-	    obsqsv->params.nRateControl != MFX_RATECONTROL_ICQ    &&
-	    obsqsv->params.nRateControl != MFX_RATECONTROL_CQP)
+		obsqsv->params.nRateControl != MFX_RATECONTROL_ICQ &&
+		obsqsv->params.nRateControl != MFX_RATECONTROL_CQP)
 		blog(LOG_INFO,
 			"\ttarget_bitrate: %d",
 			(int)obsqsv->params.nTargetBitRate);
 
 	if (obsqsv->params.nRateControl == MFX_RATECONTROL_VBR ||
-	    obsqsv->params.nRateControl == MFX_RATECONTROL_VCM)
+		obsqsv->params.nRateControl == MFX_RATECONTROL_VCM)
 		blog(LOG_INFO,
 			"\tmax_bitrate:    %d",
 			(int)obsqsv->params.nMaxBitRate);
 
 	if (obsqsv->params.nRateControl == MFX_RATECONTROL_LA_ICQ ||
-	    obsqsv->params.nRateControl == MFX_RATECONTROL_ICQ)
+		obsqsv->params.nRateControl == MFX_RATECONTROL_ICQ)
 		blog(LOG_INFO,
 			"\tICQ Quality:    %d",
 			(int)obsqsv->params.nICQQuality);
 
 	if (obsqsv->params.nRateControl == MFX_RATECONTROL_LA_ICQ ||
-	    obsqsv->params.nRateControl == MFX_RATECONTROL_LA)
+		obsqsv->params.nRateControl == MFX_RATECONTROL_LA ||
+		obsqsv->params.nRateControl == MFX_RATECONTROL_LA_HRD)
 		blog(LOG_INFO,
 			"\tLookahead Depth:%d",
 			(int)obsqsv->params.nLADEPTH);
@@ -415,7 +431,7 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 
 static bool update_settings(struct obs_qsv *obsqsv, obs_data_t *settings)
 {
-	update_params(obsqsv, settings);
+	obs_qsv_h265_update(obsqsv, settings);
 	return true;
 }
 
@@ -432,9 +448,10 @@ static void load_headers(struct obs_qsv *obsqsv)
 	da_init(header);
 	// da_init(sei);
 
-	uint8_t *pSPS, *pPPS;
-	uint16_t nSPS, nPPS;
-	qsv_encoder_headers(obsqsv->context, NULL, &pSPS, &pPPS, NULL, &nSPS, &nPPS);
+	uint8_t *pVPS, *pSPS, *pPPS;
+	uint16_t nVPS, nSPS, nPPS;
+	qsv_encoder_headers(obsqsv->context, &pVPS, &pSPS, &pPPS, &nVPS, &nSPS, &nPPS);
+	da_push_back_array(header, pVPS, nVPS);
 	da_push_back_array(header, pSPS, nSPS);
 	da_push_back_array(header, pPPS, nPPS);
 
@@ -466,7 +483,7 @@ static bool obs_qsv_update(void *data, obs_data_t *settings)
 	return false;
 }
 
-static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
+static void *obs_qsv_h265_create(obs_data_t *settings, obs_encoder_t *encoder)
 {
 	InitializeCriticalSection(&g_QsvCs);
 
@@ -482,31 +499,30 @@ static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 			warn("qsv failed to load");
 		else
 			load_headers(obsqsv);
-	} else {
+	}
+	else {
 		warn("bad settings specified");
 	}
 
 	qsv_encoder_version(&g_verMajor, &g_verMinor);
 
 	blog(LOG_INFO, "\tmajor:          %d\n"
-	               "\tminor:          %d",
-	               g_verMajor, g_verMinor);
+		"\tminor:          %d",
+		g_verMajor, g_verMinor);
 
 	// MSDK 1.6 or less doesn't have automatic DTS calculation
 	// including early SandyBridge.
 	// Need to add manual DTS from PTS.
 	if (g_verMajor == 1 && g_verMinor < 7) {
 		int64_t interval = obsqsv->params.nbFrames + 1;
-		int64_t GopPicSize = (int64_t)(obsqsv->params.nKeyIntSec *
-				obsqsv->params.nFpsNum /
-				(float)obsqsv->params.nFpsDen);
+		int64_t GopPicSize = (int64_t)(obsqsv->params.nKeyInt);
 		g_pts2dtsShift = GopPicSize - (GopPicSize / interval) *
 			interval;
 
 		blog(LOG_INFO, "\tinterval:       %d\n"
-		               "\tGopPictSize:    %d\n"
-		               "\tg_pts2dtsShift: %d",
-		               interval, GopPicSize, g_pts2dtsShift);
+			"\tGopPictSize:    %d\n"
+			"\tg_pts2dtsShift: %d",
+			interval, GopPicSize, g_pts2dtsShift);
 	}
 	else
 		g_pts2dtsShift = -1;
@@ -524,7 +540,7 @@ static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 	return obsqsv;
 }
 
-static bool obs_qsv_extra_data(void *data, uint8_t **extra_data, size_t *size)
+static bool obs_qsv_h265_extra_data(void *data, uint8_t **extra_data, size_t *size)
 {
 	struct obs_qsv *obsqsv = data;
 
@@ -536,7 +552,7 @@ static bool obs_qsv_extra_data(void *data, uint8_t **extra_data, size_t *size)
 	return true;
 }
 
-static bool obs_qsv_sei(void *data, uint8_t **sei,size_t *size)
+static bool obs_qsv_h265_sei(void *data, uint8_t **sei, size_t *size)
 {
 	struct obs_qsv *obsqsv = data;
 
@@ -558,7 +574,7 @@ static inline bool valid_format(enum video_format format)
 }
 
 static inline void cap_resolution(obs_encoder_t *encoder,
-		struct video_scale_info *info)
+	struct video_scale_info *info)
 {
 	enum qsv_cpu_platform qsv_platform = qsv_get_cpu_platform();
 	uint32_t width = obs_encoder_get_width(encoder);
@@ -578,7 +594,7 @@ static inline void cap_resolution(obs_encoder_t *encoder,
 	}
 }
 
-static void obs_qsv_video_info(void *data, struct video_scale_info *info)
+static void obs_qsv_h265_video_info(void *data, struct video_scale_info *info)
 {
 	struct obs_qsv *obsqsv = data;
 	enum video_format pref_format;
@@ -596,9 +612,6 @@ static void obs_qsv_video_info(void *data, struct video_scale_info *info)
 
 static void parse_packet(struct obs_qsv *obsqsv, struct encoder_packet *packet, mfxBitstream *pBS, uint32_t fps_num, bool *received_packet)
 {
-	uint8_t *start, *end;
-	int type;
-
 	if (pBS == NULL || pBS->DataLength == 0) {
 		*received_packet = false;
 		return;
@@ -606,50 +619,40 @@ static void parse_packet(struct obs_qsv *obsqsv, struct encoder_packet *packet, 
 
 	da_resize(obsqsv->packet_data, 0);
 	da_push_back_array(obsqsv->packet_data, &pBS->Data[pBS->DataOffset],
-			pBS->DataLength);
+		pBS->DataLength);
 
 	packet->data = obsqsv->packet_data.array;
 	packet->size = obsqsv->packet_data.num;
 	packet->type = OBS_ENCODER_VIDEO;
 	packet->pts = pBS->TimeStamp * fps_num / 90000;
-	packet->keyframe = (pBS->FrameType &
-			(MFX_FRAMETYPE_I | MFX_FRAMETYPE_REF));
+	packet->keyframe = (pBS->FrameType & (MFX_FRAMETYPE_I | MFX_FRAMETYPE_REF));
 
-	/* ------------------------------------ */
-
-	start = obsqsv->packet_data.array;
-	end = start + obsqsv->packet_data.num;
-
-	start = (uint8_t*)obs_avc_find_startcode(start, end);
-	while (true) {
-		while (start < end && !*(start++));
-
-		if (start == end)
-			break;
-
-		type = start[0] & 0x1F;
-		if (type == OBS_NAL_SLICE_IDR || type == OBS_NAL_SLICE) {
-			uint8_t prev_type = (start[0] >> 5) & 0x3;
-			start[0] &= ~(3 << 5);
-
-			if (pBS->FrameType & MFX_FRAMETYPE_I)
-				start[0] |= OBS_NAL_PRIORITY_HIGHEST << 5;
-			else if (pBS->FrameType & MFX_FRAMETYPE_P)
-				start[0] |= OBS_NAL_PRIORITY_HIGH << 5;
-			else
-				start[0] |= prev_type << 5;
-		}
-
-		start = (uint8_t*)obs_avc_find_startcode(start, end);
-	}
-
-	/* ------------------------------------ */
-
-	//bool iFrame = pBS->FrameType & MFX_FRAMETYPE_I;
-	//bool bFrame = pBS->FrameType & MFX_FRAMETYPE_B;
 	bool pFrame = pBS->FrameType & MFX_FRAMETYPE_P;
-	//int iType = iFrame ? 0 : (bFrame ? 1 : (pFrame ? 2 : -1));
-	//int64_t interval = obsqsv->params.nbFrames + 1;
+
+	/* ------------------------------------ */
+	//uint8_t *start, *end;
+	//int type;
+	//start = obsqsv->packet_data.array;
+	//end = start + obsqsv->packet_data.num;
+	//start = (uint8_t*)obs_avc_find_startcode(start, end);
+	//while (true) {
+	//	while (start < end && !*(start++));
+	//	if (start == end)
+	//		break;
+	//	type = start[0] & 0x1F;
+	//	if (type == OBS_NAL_SLICE_IDR || type == OBS_NAL_SLICE) {
+	//		uint8_t prev_type = (start[0] >> 5) & 0x3;
+	//		start[0] &= ~(3 << 5);
+	//		if (pBS->FrameType & MFX_FRAMETYPE_I)
+	//			start[0] |= OBS_NAL_PRIORITY_HIGHEST << 5;
+	//		else if (pBS->FrameType & MFX_FRAMETYPE_P)
+	//			start[0] |= OBS_NAL_PRIORITY_HIGH << 5;
+	//		else
+	//			start[0] |= prev_type << 5;
+	//	}
+	//	start = (uint8_t*)obs_avc_find_startcode(start, end);
+	//}
+	/* ------------------------------------ */
 
 	// In case MSDK doesn't support automatic DecodeTimeStamp, do manual
 	// calculation
@@ -657,14 +660,14 @@ static void parse_packet(struct obs_qsv *obsqsv, struct encoder_packet *packet, 
 	{
 		if (g_bFirst) {
 			packet->dts = packet->pts - 3 * obsqsv->params.nFpsDen;
-		} else if (pFrame) {
+		}else if (pFrame) {
 			packet->dts = packet->pts - 10 * obsqsv->params.nFpsDen;
 			g_prevDts = packet->dts;
-		} else {
+		}else {
 			packet->dts = g_prevDts + obsqsv->params.nFpsDen;
 			g_prevDts = packet->dts;
 		}
-	} else {
+	}else {
 		packet->dts = pBS->DecodeTimeStamp * fps_num / 90000;
 	}
 
@@ -682,8 +685,8 @@ static void parse_packet(struct obs_qsv *obsqsv, struct encoder_packet *packet, 
 	g_bFirst = false;
 }
 
-static bool obs_qsv_encode(void *data, struct encoder_frame *frame,
-		struct encoder_packet *packet, bool *received_packet)
+static bool obs_qsv_h265_encode(void *data, struct encoder_frame *frame,
+	struct encoder_packet *packet, bool *received_packet)
 {
 	struct obs_qsv *obsqsv = data;
 
@@ -730,18 +733,20 @@ static bool obs_qsv_encode(void *data, struct encoder_frame *frame,
 	return true;
 }
 
-struct obs_encoder_info obs_qsv_H264_encoder = {
-	.id = "obs_qsv11",
+
+
+struct obs_encoder_info obs_qsv_H265_encoder = {
+	.id = "obs_qsv_h265",
 	.type = OBS_ENCODER_VIDEO,
-	.codec = "h264",
-	.get_name = obs_qsv_getname,
-	.create = obs_qsv_create,
-	.destroy = obs_qsv_destroy,
-	.encode = obs_qsv_encode,
-	.update = obs_qsv_update,
-	.get_properties = obs_qsv_props,
-	.get_defaults = obs_qsv_defaults,
-	.get_extra_data = obs_qsv_extra_data,
-	.get_sei_data = obs_qsv_sei,
-	.get_video_info = obs_qsv_video_info
+	.codec = "hevc",
+	.get_name = obs_qsv_h265_getname,
+	.create = obs_qsv_h265_create,
+	.destroy = obs_qsv_h265_destroy,
+	.encode = obs_qsv_h265_encode,
+	.update = obs_qsv_h265_update,
+	.get_properties = obs_qsv_h265_props,
+	.get_defaults = obs_qsv_h265_defaults,
+	.get_extra_data = obs_qsv_h265_extra_data,
+	.get_sei_data = obs_qsv_h265_sei,
+	.get_video_info = obs_qsv_h265_video_info
 };
