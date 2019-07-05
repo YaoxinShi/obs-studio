@@ -79,8 +79,6 @@ void qsv_encoder_version(unsigned short *major, unsigned short *minor)
 
 qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 {
-	bool false_value = false;
-
 	QSV_Encoder_Internal *pEncoder = new QSV_Encoder_Internal(impl, ver);
 	mfxStatus sts = pEncoder->Open(pParams);
 	if (sts != MFX_ERR_NONE) {
@@ -189,6 +187,23 @@ int qsv_encoder_encode(qsv_t *pContext, uint64_t ts, uint8_t *pDataY,
 	if (pDataY != NULL && pDataUV != NULL)
 		sts = pEncoder->Encode(ts, pDataY, pDataUV, strideY, strideUV,
 				       pBS);
+
+	if (sts == MFX_ERR_NONE)
+		return 0;
+	else if (sts == MFX_ERR_MORE_DATA)
+		return 1;
+	else
+		return -1;
+}
+
+int qsv_encoder_encode_tex(qsv_t * pContext, uint64_t ts, uint32_t tex_handle,
+        uint64_t lock_key, uint64_t *next_key,
+		mfxBitstream **pBS)
+{
+	QSV_Encoder_Internal *pEncoder = (QSV_Encoder_Internal *)pContext;
+	mfxStatus sts = MFX_ERR_NONE;
+
+	sts = pEncoder->Encode_tex(ts, tex_handle, lock_key, next_key, pBS);
 
 	if (sts == MFX_ERR_NONE)
 		return 0;
