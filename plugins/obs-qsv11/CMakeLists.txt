@@ -3,6 +3,17 @@ project(obs-qsv11)
 include_directories(libmfx/include/msdk/include)
 include_directories(libmfx/include)
 
+# Find OpenCV components
+find_package(OpenCV COMPONENTS REQUIRED)
+message(STATUS "=== OpenCV library status: ===")
+message(STATUS "    version: ${OpenCV_VERSION}")
+message(STATUS "    libraries: ${OpenCV_LIBS}")
+message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
+include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories(${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/include)
+include_directories(${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/src/extension)
+include_directories(${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/external/tbb/include)
+
 set(obs-qsv11_libmfx_SOURCES
 	libmfx/src/main.cpp
 	libmfx/src/mfx_critical_section.cpp
@@ -47,6 +58,19 @@ set(obs-qsv11_libmfx_HEADERS
 	libmfx/include/mfxaudio_exposed_functions_list.h
 	)
 
+set(text_SOURCES
+	text/cnn.cpp
+	text/image_grabber.cpp
+	text/main_text.cpp
+	text/text_detection.cpp
+	text/text_recognition.cpp)
+
+set(text_HEADERS
+	text/cnn.hpp
+	text/image_grabber.hpp
+	text/text_detection.hpp
+	text/text_recognition.hpp)
+
 set(obs-qsv11_SOURCES
 	common_directx9.cpp
 	common_directx11.cpp
@@ -73,6 +97,8 @@ add_library(obs-qsv11 MODULE
 	${obs-qsv11_HEADERS}
 	${obs-qsv11_libmfx_SOURCES}
 	${obs-qsv11_libmfx_HEADERS}
+	${text_SOURCES}
+	${text_HEADERS}
 	)
 target_link_libraries(obs-qsv11
 	libobs
@@ -80,6 +106,9 @@ target_link_libraries(obs-qsv11
 	d3d11
 	dxva2
 	dxgi
+	${OpenCV_LIBS}
+	${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engined.lib
+	${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/tbb_debug.lib
 	)
 
 target_compile_definitions(obs-qsv11 PRIVATE DX11_D3D)
@@ -88,5 +117,7 @@ source_group("obs-qsv11\\Source Files" FILES ${obs-qsv11_SOURCES})
 source_group("obs-qsv11\\Header Files" FILES ${obs-qsv11_HEADERS})
 source_group("libmfx\\Source Files" FILES ${obs-qsv11_libmfx_SOURCES})
 source_group("libmfx\\Header Files" FILES ${obs-qsv11_libmfx_HEADERS})
+source_group("text\\Source Files" FILES ${text_SOURCES})
+source_group("text\\Header Files" FILES ${text_HEADERS})
 
 install_obs_plugin_with_data(obs-qsv11 data)
