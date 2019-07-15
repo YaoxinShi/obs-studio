@@ -14,6 +14,12 @@ include_directories(${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engi
 include_directories(${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/src/extension)
 include_directories(${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/external/tbb/include)
 
+if (WIN32)
+    if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /wd4267") #disable some warnings
+    endif()
+endif()
+
 set(obs-qsv11_libmfx_SOURCES
 	libmfx/src/main.cpp
 	libmfx/src/mfx_critical_section.cpp
