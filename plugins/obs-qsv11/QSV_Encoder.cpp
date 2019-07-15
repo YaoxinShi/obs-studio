@@ -63,6 +63,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <atomic>
 #include <intrin.h>
+#include "text\cnn.hpp"
 
 #define do_log(level, format, ...) \
 	blog(level, "[qsv encoder: '%s'] " format, \
@@ -173,8 +174,11 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 	mfxStatus sts = MFX_ERR_NONE;
 
 	if (pDataY != NULL && pDataUV != NULL)
+	{
+		txt_detection();
 		sts = pEncoder->Encode(ts, pDataY, pDataUV, strideY, strideUV,
-				pBS);
+			pBS);
+	}
 
 	if (sts == MFX_ERR_NONE)
 		return 0;

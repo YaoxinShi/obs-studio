@@ -23,6 +23,7 @@
 #include "text_recognition.hpp"
 
 #define DISABLE_ROTATE_RECT 1
+#define SHOW_CV_OUTPUT_IMAGE 1
 
 using namespace InferenceEngine;
 
@@ -118,7 +119,7 @@ int txt_detection() {
         const double min_text_recognition_confidence = 0.2;
 
         std::map<std::string, InferencePlugin> plugins_for_devices;
-        std::vector<std::string> devices = {"CPU", "CPU"};
+        std::vector<std::string> devices = {"GPU", "CPU"};
 
         float cls_conf_threshold = static_cast<float>(0.8);
         float link_conf_threshold = static_cast<float>(0.8);
@@ -152,7 +153,7 @@ int txt_detection() {
 
         std::cout << "Init Image Grabber" << std::endl;
 	std::string input_type = "image";
-        std::unique_ptr<Grabber> grabber = Grabber::make_grabber(image_path, input_type);
+        std::unique_ptr<Grabber> grabber = Grabber::make_grabber(input_type, image_path);
 
         cv::Mat image;
         grabber->GrabNextImage(&image);
@@ -267,7 +268,7 @@ int txt_detection() {
                     std::cout << std::endl;
                 }
 
-		if (0) // show output image
+		if (SHOW_CV_OUTPUT_IMAGE)
 		{
 			if (!res.empty() || !text_recognition.is_initialized()) {
 				for (size_t i = 0; i < points.size(); i++) {
@@ -290,7 +291,7 @@ int txt_detection() {
             }
             int fps = static_cast<int>(1000 / avg_time);
 
-            if (0) // show output image
+            if (SHOW_CV_OUTPUT_IMAGE)
 	    {
                 std::cout << "To close the application, press 'CTRL+C' or any key with focus on the output window" << std::endl;
                 cv::putText(demo_image, "fps: " + std::to_string(fps) + " found: " + std::to_string(num_found),

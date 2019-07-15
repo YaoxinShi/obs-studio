@@ -41,3 +41,5 @@ class Cnn {
     size_t ncalls_;
 };
 
+int txt_detection();
+
