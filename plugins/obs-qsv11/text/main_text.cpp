@@ -24,6 +24,7 @@
 
 #define DISABLE_ROTATE_RECT 1
 #define SHOW_CV_OUTPUT_IMAGE 1
+#define USE_OBS_INPUT 1
 
 using namespace InferenceEngine;
 
@@ -103,7 +104,7 @@ int clip(int x, int max_val) {
     return std::min(std::max(x, 0), max_val);
 }
 
-int txt_detection() {
+int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
     try {
         // ----------------------------- Parsing and validating input arguments ------------------------------
 
@@ -151,6 +152,12 @@ int txt_detection() {
             text_recognition.Init(text_recognition_model_path, &plugins_for_devices[devices[1]]);
         }
 
+#if USE_OBS_INPUT
+	cv::Mat image;
+	cv::Mat imageYUV(height*3/2, width, CV_8UC1, (void*)pY);
+	cv::cvtColor(imageYUV, image, cv::COLOR_YUV420sp2RGB, 3);
+	bool is_image = true;
+#else
         std::cout << "Init Image Grabber" << std::endl;
 	std::string input_type = "image";
         std::unique_ptr<Grabber> grabber = Grabber::make_grabber(input_type, image_path);
@@ -159,6 +166,7 @@ int txt_detection() {
         grabber->GrabNextImage(&image);
 
         bool is_image = (input_type.find("image") != std::string::npos);
+#endif
         while (!image.empty() || is_image) {
             std::cout << "-------------------------------------------------------" << std::endl;
             cv::Mat demo_image = image.clone();
@@ -309,10 +317,12 @@ int txt_detection() {
             std::cout << "=== draw (ms): "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count() << std::endl;
 
+#if ! USE_OBS_INPUT
             if (!is_image)
             {
                 grabber->GrabNextImage(&image);
             }
+#endif
         }
         // ---------------------------------------------------------------------------------------------------
     } catch (const std::exception & ex) {

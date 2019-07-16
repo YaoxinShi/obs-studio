@@ -41,5 +41,5 @@ class Cnn {
     size_t ncalls_;
 };
 
-int txt_detection();
+int txt_detection(uint8_t * pY, uint32_t width, uint32_t height);
 
