@@ -104,6 +104,9 @@ int clip(int x, int max_val) {
     return std::min(std::max(x, 0), max_val);
 }
 
+Cnn text_detection, text_recognition;
+bool cnn_initialized = false;
+
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
     try {
         // ----------------------------- Parsing and validating input arguments ------------------------------
@@ -118,39 +121,38 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
         std::string kAlphabet = std::string("0123456789abcdefghijklmnopqrstuvwxyz") + kPadSymbol;
 
         const double min_text_recognition_confidence = 0.2;
+	float cls_conf_threshold = static_cast<float>(0.8);
+	float link_conf_threshold = static_cast<float>(0.8);
 
-        std::map<std::string, InferencePlugin> plugins_for_devices;
-        std::vector<std::string> devices = {"GPU", "CPU"};
+	std::map<std::string, InferencePlugin> plugins_for_devices;
+	std::vector<std::string> devices = { "GPU", "CPU" };
+	if (!cnn_initialized)
+	{
+		std::cout << "Init plugins" << std::endl;
+		for (const auto &device : devices) {
+			if (plugins_for_devices.find(device) != plugins_for_devices.end()) {
+				continue;
+			}
+			InferencePlugin plugin = PluginDispatcher().getPluginByDevice(device);
+			plugins_for_devices[device] = plugin;
+		}
 
-        float cls_conf_threshold = static_cast<float>(0.8);
-        float link_conf_threshold = static_cast<float>(0.8);
+		std::string text_detection_model_path = "c:\\tmp\\text-detection-0002_FP16.xml";
+		std::string text_recognition_model_path = "";
 
-        std::cout << "Init plugins" << std::endl;
-        for (const auto &device : devices) {
-            if (plugins_for_devices.find(device) != plugins_for_devices.end()) {
-                continue;
-            }
-            InferencePlugin plugin = PluginDispatcher().getPluginByDevice(device);
-            plugins_for_devices[device] = plugin;
-        }
+		if (!text_detection_model_path.empty())
+		{
+			std::cout << "Init text detection NN" << std::endl;
+			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
+		}
 
-	std::string image_path = "c:\\tmp\\forza_540p.jpg";
-	std::string text_detection_model_path = "c:\\tmp\\text-detection-0002_FP16.xml";
-	std::string text_recognition_model_path = "";
-
-        Cnn text_detection, text_recognition;
-
-        if (!text_detection_model_path.empty())
-        {
-            std::cout << "Init text detection NN" << std::endl;
-            text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
-        }
-
-        if (!text_recognition_model_path.empty())
-        {
-            std::cout << "Init text recognition NN" << std::endl;
-            text_recognition.Init(text_recognition_model_path, &plugins_for_devices[devices[1]]);
-        }
+		if (!text_recognition_model_path.empty())
+		{
+			std::cout << "Init text recognition NN" << std::endl;
+			text_recognition.Init(text_recognition_model_path, &plugins_for_devices[devices[1]]);
+		}
+		cnn_initialized = true;
+	}
 
 #if USE_OBS_INPUT
 	cv::Mat image;
@@ -160,6 +162,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
 #else
         std::cout << "Init Image Grabber" << std::endl;
 	std::string input_type = "image";
+	std::string image_path = "c:\\tmp\\forza_540p.jpg";
         std::unique_ptr<Grabber> grabber = Grabber::make_grabber(input_type, image_path);
 
         cv::Mat image;
