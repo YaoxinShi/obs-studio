@@ -22,6 +22,11 @@
 #include "text_detection.hpp"
 #include "text_recognition.hpp"
 
+#include <obs-module.h>
+#define do_log(level, format, ...) \
+	blog(level, "[text detection: '%s'] " format, \
+			"aaa", ##__VA_ARGS__)
+
 #define DISABLE_ROTATE_RECT 1
 #define SHOW_CV_OUTPUT_IMAGE 1
 #define USE_OBS_INPUT 1
@@ -128,7 +133,8 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
 	std::vector<std::string> devices = { "GPU", "CPU" };
 	if (!cnn_initialized)
 	{
-		std::cout << "Init plugins" << std::endl;
+		//std::cout << "Init plugins" << std::endl;
+		do_log(LOG_WARNING, "Init plugins");
 		for (const auto &device : devices) {
 			if (plugins_for_devices.find(device) != plugins_for_devices.end()) {
 				continue;
@@ -142,13 +148,13 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
 
 		if (!text_detection_model_path.empty())
 		{
-			std::cout << "Init text detection NN" << std::endl;
+			do_log(LOG_WARNING, "Init text detection NN");
 			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
 		}
 
 		if (!text_recognition_model_path.empty())
 		{
-			std::cout << "Init text recognition NN" << std::endl;
+			do_log(LOG_WARNING, "Init text recognition NN");
 			text_recognition.Init(text_recognition_model_path, &plugins_for_devices[devices[1]]);
 		}
 		cnn_initialized = true;
@@ -160,7 +166,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
 	cv::cvtColor(imageYUV, image, cv::COLOR_YUV420sp2RGB, 3);
 	bool is_image = true;
 #else
-        std::cout << "Init Image Grabber" << std::endl;
+	do_log(LOG_WARNING, "Init Image Grabber");
 	std::string input_type = "image";
 	std::string image_path = "c:\\tmp\\forza_540p.jpg";
         std::unique_ptr<Grabber> grabber = Grabber::make_grabber(input_type, image_path);
@@ -171,7 +177,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
         bool is_image = (input_type.find("image") != std::string::npos);
         while (!image.empty() || is_image) {
 #endif
-            std::cout << "-------------------------------------------------------" << std::endl;
+	    do_log(LOG_WARNING, "-------------------------------------------------------");
             cv::Mat demo_image = image.clone();
             cv::Size orig_image_size = image.size();
 
@@ -266,17 +272,14 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
 
                 if (1) {
                     for (size_t i = 0; i < points.size(); i++) {
-                        std::cout << clip(static_cast<int>(points[i].x), image.cols - 1) << "," <<
-                                     clip(static_cast<int>(points[i].y), image.rows - 1);
-                        if (i != points.size() - 1)
-                            std::cout << ",";
+			    do_log(LOG_WARNING, "%d,%d",
+				    clip(static_cast<int>(points[i].x), image.cols - 1),
+				    clip(static_cast<int>(points[i].y), image.rows - 1));
                     }
 
                     if (text_recognition.is_initialized()) {
-                        std::cout << "," << res;
+			do_log(LOG_WARNING, "recog: %s", res);
                     }
-
-                    std::cout << std::endl;
                 }
 
 		if (SHOW_CV_OUTPUT_IMAGE)
@@ -304,7 +307,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
 
             if (SHOW_CV_OUTPUT_IMAGE)
 	    {
-                std::cout << "To close the application, press 'CTRL+C' or any key with focus on the output window" << std::endl;
+		    do_log(LOG_WARNING, "cv show");
                 cv::putText(demo_image, "fps: " + std::to_string(fps) + " found: " + std::to_string(num_found),
                             cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, 1, cv::Scalar(0, 0, 255), 1);
                 cv::imshow("Press any key to exit", demo_image);
@@ -313,12 +316,9 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
             }
 
             draw_end = std::chrono::steady_clock::now();
-            std::cout << "=== inference (ms): "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(infer_end - infer_begin).count() << std::endl;
-            std::cout << "=== postprocess (ms): "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(pp_end - pp_begin).count() << std::endl;
-            std::cout << "=== draw (ms): "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count() << std::endl;
+	    do_log(LOG_WARNING, "=== inference %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(infer_end - infer_begin).count());
+	    do_log(LOG_WARNING, "=== postprocess %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(pp_end - pp_begin).count());
+	    do_log(LOG_WARNING, "=== draw %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count());
 
 #if ! USE_OBS_INPUT
             if (!is_image)
