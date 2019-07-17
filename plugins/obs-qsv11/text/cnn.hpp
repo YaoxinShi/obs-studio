@@ -42,4 +42,5 @@ class Cnn {
 };
 
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height);
+extern std::vector<cv::Rect> rects_no_rotate;
 

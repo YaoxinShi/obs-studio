@@ -30,6 +30,7 @@
 #define DISABLE_ROTATE_RECT 1
 #define SHOW_CV_OUTPUT_IMAGE 1
 #define USE_OBS_INPUT 1
+#define MAX_ROI_REGION_NUMBER 16
 
 using namespace InferenceEngine;
 
@@ -84,6 +85,7 @@ cv::Rect combine_two_rect(const cv::Rect r1, const cv::Rect r2)
 
 void merge_rect(std::vector<cv::Rect>& rects)
 {
+    //merge
     int index = 0;
     cv::Rect rect, rect2;
     while (index < rects.size() - 1)
@@ -103,6 +105,14 @@ void merge_rect(std::vector<cv::Rect>& rects)
         }
         index++;
     }
+
+    //sort and cut
+    std::sort(rects.begin(), rects.end(), [](const cv::Rect & a, const cv::Rect & b) {
+	    return a.area() > b.area();
+    });
+    if (static_cast<int>(rects.size()) > MAX_ROI_REGION_NUMBER) {
+	    rects.resize(MAX_ROI_REGION_NUMBER);
+    }
 }
 
 int clip(int x, int max_val) {
@@ -112,6 +122,7 @@ int clip(int x, int max_val) {
 Cnn text_detection, text_recognition;
 std::map<std::string, InferencePlugin> plugins_for_devices;
 bool cnn_initialized = false;
+std::vector<cv::Rect> rects_no_rotate;
 
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
     try {
@@ -208,12 +219,11 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
             }
 
 #if DISABLE_ROTATE_RECT
-            std::vector<cv::Rect> rects_no_rotate;
             for (const auto &rect : rects) {
                 rects_no_rotate.emplace_back(rect.boundingRect());
             }
             //cv::groupRectangles(rects_no_rotate, 1, 2);
-            //merge_rect(rects_no_rotate);
+            merge_rect(rects_no_rotate);
             int num_found = static_cast<int>(rects_no_rotate.size());
 #else
             int num_found = text_recognition.is_initialized() ? 0 : static_cast<int>(rects.size());
