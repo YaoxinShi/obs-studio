@@ -105,6 +105,7 @@ int clip(int x, int max_val) {
 }
 
 Cnn text_detection, text_recognition;
+std::map<std::string, InferencePlugin> plugins_for_devices;
 bool cnn_initialized = false;
 
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
@@ -124,7 +125,6 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
 	float cls_conf_threshold = static_cast<float>(0.8);
 	float link_conf_threshold = static_cast<float>(0.8);
 
-	std::map<std::string, InferencePlugin> plugins_for_devices;
 	std::vector<std::string> devices = { "GPU", "CPU" };
 	if (!cnn_initialized)
 	{
@@ -169,8 +169,8 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
         grabber->GrabNextImage(&image);
 
         bool is_image = (input_type.find("image") != std::string::npos);
-#endif
         while (!image.empty() || is_image) {
+#endif
             std::cout << "-------------------------------------------------------" << std::endl;
             cv::Mat demo_image = image.clone();
             cv::Size orig_image_size = image.size();
@@ -308,8 +308,8 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
                 cv::putText(demo_image, "fps: " + std::to_string(fps) + " found: " + std::to_string(num_found),
                             cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, 1, cv::Scalar(0, 0, 255), 1);
                 cv::imshow("Press any key to exit", demo_image);
-                char k = cv::waitKey(3);
-                if (k == 27) break;
+                char k = cv::waitKey(3); // cv::waitKey is a must for cv::imshow
+                if (k == 27) return 1;
             }
 
             draw_end = std::chrono::steady_clock::now();
@@ -325,8 +325,8 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
             {
                 grabber->GrabNextImage(&image);
             }
-#endif
         }
+#endif
         // ---------------------------------------------------------------------------------------------------
     } catch (const std::exception & ex) {
         std::cerr << ex.what() << std::endl;
