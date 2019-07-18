@@ -60,6 +60,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mfxvideo++.h"
 #include <VersionHelpers.h>
 #include <obs-module.h>
+#include "text\cnn.hpp"
 
 #define do_log(level, format, ...) \
 	blog(level, "[qsv encoder: '%s'] " format, \
@@ -251,7 +252,7 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	m_mfxEncParams.mfx.GopPicSize = (mfxU16)(pParams->nKeyIntSec *
 			pParams->nFpsNum / (float)pParams->nFpsDen);
 
-	static mfxExtBuffer* extendedBuffers[2];
+	static mfxExtBuffer* extendedBuffers[3];
 	int iBuffers = 0;
 	if (pParams->nAsyncDepth == 1) {
 		m_mfxEncParams.mfx.NumRefFrame = 1;
@@ -274,6 +275,26 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 		m_co2.Header.BufferSz = sizeof(m_co2);
 		m_co2.LookAheadDepth = pParams->nLADEPTH;
 		extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co2;
+	}
+
+	if (rects_no_rotate.size() > 0)
+	{
+		memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
+		m_ROI.Header.BufferId = MFX_EXTBUFF_ENCODER_ROI;
+		m_ROI.Header.BufferSz = sizeof(m_ROI);
+
+		m_ROI.NumROI = rects_no_rotate.size();
+		m_ROI.ROIMode = MFX_ROI_MODE_QP_DELTA;
+		for (int i = 0; i < rects_no_rotate.size(); i++) {
+			cv::Rect rect = rects_no_rotate[i];
+			m_ROI.ROI[i].Left = rect.x;
+			m_ROI.ROI[i].Top = rect.y;
+			m_ROI.ROI[i].Right = rect.x + rect.width;
+			m_ROI.ROI[i].Bottom = rect.y + rect.height;
+			m_ROI.ROI[i].DeltaQP = -2;
+		}
+
+		extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_ROI;
 	}
 
 	if (iBuffers > 0) {
