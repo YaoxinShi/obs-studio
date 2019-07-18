@@ -321,9 +321,12 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
 		    do_log(LOG_WARNING, "cv show");
                 cv::putText(demo_image, "fps: " + std::to_string(fps) + " found: " + std::to_string(num_found) + " frame: " + std::to_string(frame_num),
                             cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, 1, cv::Scalar(0, 0, 255), 1);
-                cv::imshow("Press any key to exit", demo_image);
-                char k = cv::waitKey(3); // cv::waitKey is a must for cv::imshow
-                if (k == 27) return 1;
+		cv::namedWindow("Press any key to exit", cv::WINDOW_NORMAL);
+		cv::resizeWindow("Press any key to exit", 960, 540);
+		//cv::startWindowThread();
+		cv::imshow("Press any key to exit", demo_image);
+		char k = cv::waitKey(10); // 10ms, 0 means infinite, cv::waitKey is a must for cv::imshow
+		if (k == 27) cv::destroyAllWindows(); //key 27 is ESC
             }
 
             draw_end = std::chrono::steady_clock::now();
