@@ -73,6 +73,7 @@ public:
 			**pBS);
 	mfxStatus    ClearData();
 	mfxStatus    Reset(qsv_param_t *pParams);
+	mfxStatus    UpdateSetting();
 
 protected:
 	bool         InitParams(qsv_param_t * pParams);

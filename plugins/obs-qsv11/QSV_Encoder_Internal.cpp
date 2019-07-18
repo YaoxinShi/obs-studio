@@ -152,6 +152,65 @@ QSV_Encoder_Internal::~QSV_Encoder_Internal()
 		ClearData();
 }
 
+mfxStatus QSV_Encoder_Internal::UpdateSetting()
+{
+	mfxStatus sts = MFX_ERR_NONE;
+
+	static mfxExtBuffer* extendedBuffers[3];
+	int iBuffers = 0;
+	int iBufferROI = -1;
+
+	for (iBuffers = 0; iBuffers < m_mfxEncParams.NumExtParam; iBuffers++)
+	{
+		extendedBuffers[iBuffers] = m_mfxEncParams.ExtParam[iBuffers];
+		if (((mfxExtBuffer*)extendedBuffers[iBuffers])->BufferId == MFX_EXTBUFF_ENCODER_ROI)
+		{
+			iBufferROI = iBuffers;
+		}
+	}
+
+	if (rects_no_rotate.size() > 0)
+	{
+		memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
+		m_ROI.Header.BufferId = MFX_EXTBUFF_ENCODER_ROI;
+		m_ROI.Header.BufferSz = sizeof(m_ROI);
+
+		m_ROI.NumROI = rects_no_rotate.size();
+		m_ROI.ROIMode = MFX_ROI_MODE_QP_DELTA;
+		for (int i = 0; i < rects_no_rotate.size(); i++) {
+			cv::Rect rect = rects_no_rotate[i];
+			m_ROI.ROI[i].Left = rect.x;
+			m_ROI.ROI[i].Top = rect.y;
+			m_ROI.ROI[i].Right = rect.x + rect.width;
+			m_ROI.ROI[i].Bottom = rect.y + rect.height;
+			m_ROI.ROI[i].DeltaQP = -4;
+		}
+
+		if (iBufferROI != -1)
+		{
+			extendedBuffers[iBufferROI] = (mfxExtBuffer*)& m_ROI;
+		}
+		else
+		{
+			extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_ROI;
+		}
+	}
+
+	if (iBuffers > 0) {
+		m_mfxEncParams.ExtParam = extendedBuffers;
+		m_mfxEncParams.NumExtParam = (mfxU16)iBuffers;
+	}
+
+	sts = m_pmfxENC->Query(&m_mfxEncParams, &m_mfxEncParams);
+	MSDK_IGNORE_MFX_STS(sts, MFX_WRN_INCOMPATIBLE_VIDEO_PARAM);
+	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
+
+	sts = m_pmfxENC->Reset(&m_mfxEncParams);
+	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
+
+	return sts;
+}
+
 mfxStatus QSV_Encoder_Internal::Open(qsv_param_t * pParams)
 {
 	mfxStatus sts = MFX_ERR_NONE;
@@ -252,7 +311,7 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	m_mfxEncParams.mfx.GopPicSize = (mfxU16)(pParams->nKeyIntSec *
 			pParams->nFpsNum / (float)pParams->nFpsDen);
 
-	static mfxExtBuffer* extendedBuffers[3];
+	static mfxExtBuffer* extendedBuffers[2];
 	int iBuffers = 0;
 	if (pParams->nAsyncDepth == 1) {
 		m_mfxEncParams.mfx.NumRefFrame = 1;
@@ -275,26 +334,6 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 		m_co2.Header.BufferSz = sizeof(m_co2);
 		m_co2.LookAheadDepth = pParams->nLADEPTH;
 		extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co2;
-	}
-
-	if (rects_no_rotate.size() > 0)
-	{
-		memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
-		m_ROI.Header.BufferId = MFX_EXTBUFF_ENCODER_ROI;
-		m_ROI.Header.BufferSz = sizeof(m_ROI);
-
-		m_ROI.NumROI = rects_no_rotate.size();
-		m_ROI.ROIMode = MFX_ROI_MODE_QP_DELTA;
-		for (int i = 0; i < rects_no_rotate.size(); i++) {
-			cv::Rect rect = rects_no_rotate[i];
-			m_ROI.ROI[i].Left = rect.x;
-			m_ROI.ROI[i].Top = rect.y;
-			m_ROI.ROI[i].Right = rect.x + rect.width;
-			m_ROI.ROI[i].Bottom = rect.y + rect.height;
-			m_ROI.ROI[i].DeltaQP = -2;
-		}
-
-		extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_ROI;
 	}
 
 	if (iBuffers > 0) {

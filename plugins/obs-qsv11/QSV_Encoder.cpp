@@ -179,6 +179,7 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 		{
 			txt_detection(pDataY, strideY, (pDataUV - pDataY) / strideY);
 			do_log(LOG_WARNING, "x=%d, y=%d", rects_no_rotate[0].x, rects_no_rotate[0].y);
+			pEncoder->UpdateSetting();
 		}
 		frame_num++;
 		sts = pEncoder->Encode(ts, pDataY, pDataUV, strideY, strideUV,
