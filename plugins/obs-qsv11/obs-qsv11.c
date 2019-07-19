@@ -105,10 +105,16 @@ static int64_t          g_prevDts;
 static bool             g_bFirst;
 
 
+static const char *obs_qsv_getname2(void *type_data)
+{
+	UNUSED_PARAMETER(type_data);
+	return "QuickSync H.264 - dGPU";
+}
+
 static const char *obs_qsv_getname(void *type_data)
 {
 	UNUSED_PARAMETER(type_data);
-	return "QuickSync H.264";
+	return "QuickSync H.264 - iGPU";
 }
 
 static void obs_qsv_stop(void *data);
@@ -464,6 +470,65 @@ static bool obs_qsv_update(void *data, obs_data_t *settings)
 	return false;
 }
 
+static void *obs_qsv_create2(obs_data_t *settings, obs_encoder_t *encoder)
+{
+	InitializeCriticalSection(&g_QsvCs);
+
+	struct obs_qsv *obsqsv = bzalloc(sizeof(struct obs_qsv));
+	obsqsv->encoder = encoder;
+
+	if (update_settings(obsqsv, settings)) {
+		EnterCriticalSection(&g_QsvCs);
+		obsqsv->context = qsv_encoder_open(&obsqsv->params, true);
+		LeaveCriticalSection(&g_QsvCs);
+
+		if (obsqsv->context == NULL)
+			warn("qsv failed to load");
+		else
+			load_headers(obsqsv);
+	}
+	else {
+		warn("bad settings specified");
+	}
+
+	qsv_encoder_version(&g_verMajor, &g_verMinor);
+
+	blog(LOG_INFO, "\tmajor:          %d\n"
+		"\tminor:          %d",
+		g_verMajor, g_verMinor);
+
+	// MSDK 1.6 or less doesn't have automatic DTS calculation
+	// including early SandyBridge.
+	// Need to add manual DTS from PTS.
+	if (g_verMajor == 1 && g_verMinor < 7) {
+		int64_t interval = obsqsv->params.nbFrames + 1;
+		int64_t GopPicSize = (int64_t)(obsqsv->params.nKeyIntSec *
+			obsqsv->params.nFpsNum /
+			(float)obsqsv->params.nFpsDen);
+		g_pts2dtsShift = GopPicSize - (GopPicSize / interval) *
+			interval;
+
+		blog(LOG_INFO, "\tinterval:       %d\n"
+			"\tGopPictSize:    %d\n"
+			"\tg_pts2dtsShift: %d",
+			interval, GopPicSize, g_pts2dtsShift);
+	}
+	else
+		g_pts2dtsShift = -1;
+
+	if (!obsqsv->context) {
+		bfree(obsqsv);
+		return NULL;
+	}
+
+	obsqsv->performance_token =
+		os_request_high_performance("qsv encoding");
+
+	g_bFirst = true;
+
+	return obsqsv;
+}
+
 static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 {
 	InitializeCriticalSection(&g_QsvCs);
@@ -473,7 +538,7 @@ static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 
 	if (update_settings(obsqsv, settings)) {
 		EnterCriticalSection(&g_QsvCs);
-		obsqsv->context = qsv_encoder_open(&obsqsv->params);
+		obsqsv->context = qsv_encoder_open(&obsqsv->params, false);
 		LeaveCriticalSection(&g_QsvCs);
 
 		if (obsqsv->context == NULL)
@@ -734,6 +799,22 @@ struct obs_encoder_info obs_qsv_encoder = {
 	.codec = "h264",
 	.get_name = obs_qsv_getname,
 	.create = obs_qsv_create,
+	.destroy = obs_qsv_destroy,
+	.encode = obs_qsv_encode,
+	.update = obs_qsv_update,
+	.get_properties = obs_qsv_props,
+	.get_defaults = obs_qsv_defaults,
+	.get_extra_data = obs_qsv_extra_data,
+	.get_sei_data = obs_qsv_sei,
+	.get_video_info = obs_qsv_video_info
+};
+
+struct obs_encoder_info obs_qsv_encoder2 = {
+	.id = "obs_qsv11_2",
+	.type = OBS_ENCODER_VIDEO,
+	.codec = "h264",
+	.get_name = obs_qsv_getname2,
+	.create = obs_qsv_create2,
 	.destroy = obs_qsv_destroy,
 	.encode = obs_qsv_encode,
 	.update = obs_qsv_update,
