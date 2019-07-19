@@ -156,9 +156,19 @@ mfxStatus QSV_Encoder_Internal::UpdateSetting()
 {
 	mfxStatus sts = MFX_ERR_NONE;
 
-	static mfxExtBuffer* extendedBuffers[3];
+	//drain old frames
+	/*for (;;) {
+		sts = m_pmfxENC->EncodeFrameAsync(NULL, NULL,
+			&m_pTaskPool[0].mfxBS,
+			&m_pTaskPool[0].syncp);
+
+		if (sts == MFX_ERR_MORE_DATA) break;
+	}*/
+
+	static mfxExtBuffer* extendedBuffers[4];
 	int iBuffers = 0;
 	int iBufferROI = -1;
+	int iBufferReset = -1;
 
 	for (iBuffers = 0; iBuffers < m_mfxEncParams.NumExtParam; iBuffers++)
 	{
@@ -166,6 +176,10 @@ mfxStatus QSV_Encoder_Internal::UpdateSetting()
 		if (((mfxExtBuffer*)extendedBuffers[iBuffers])->BufferId == MFX_EXTBUFF_ENCODER_ROI)
 		{
 			iBufferROI = iBuffers;
+		}
+		if (((mfxExtBuffer*)extendedBuffers[iBuffers])->BufferId == MFX_EXTBUFF_ENCODER_RESET_OPTION)
+		{
+			iBufferReset = iBuffers;
 		}
 	}
 
@@ -194,6 +208,19 @@ mfxStatus QSV_Encoder_Internal::UpdateSetting()
 		{
 			extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_ROI;
 		}
+	}
+
+	memset(&m_reset, 0, sizeof(mfxExtEncoderResetOption));
+	m_reset.Header.BufferId = MFX_EXTBUFF_ENCODER_RESET_OPTION;
+	m_reset.Header.BufferSz = sizeof(m_reset);
+	m_reset.StartNewSequence = MFX_CODINGOPTION_OFF; // encoder will continue current sequence.
+	if (iBufferReset != -1)
+	{
+		extendedBuffers[iBufferReset] = (mfxExtBuffer*)& m_reset;
+	}
+	else
+	{
+		extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_reset;
 	}
 
 	if (iBuffers > 0) {
