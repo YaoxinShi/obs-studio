@@ -156,7 +156,7 @@ mfxStatus QSV_Encoder_Internal::UpdateSetting()
 {
 	mfxStatus sts = MFX_ERR_NONE;
 
-	//drain old frames
+	//TODO: drain old frames
 	/*for (;;) {
 		sts = m_pmfxENC->EncodeFrameAsync(NULL, NULL,
 			&m_pTaskPool[0].mfxBS,
@@ -630,7 +630,32 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 
 	for (;;) {
 		// Encode a frame asynchronously (returns immediately)
-		sts = m_pmfxENC->EncodeFrameAsync(NULL, pSurface,
+		if (rects_no_rotate.size() > 0)
+		{
+			memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
+			m_ROI.Header.BufferId = MFX_EXTBUFF_ENCODER_ROI;
+			m_ROI.Header.BufferSz = sizeof(m_ROI);
+
+			m_ROI.NumROI = rects_no_rotate.size();
+			m_ROI.ROIMode = MFX_ROI_MODE_QP_DELTA;
+			for (int i = 0; i < rects_no_rotate.size(); i++) {
+				cv::Rect rect = rects_no_rotate[i];
+				m_ROI.ROI[i].Left = rect.x;
+				m_ROI.ROI[i].Top = rect.y;
+				m_ROI.ROI[i].Right = rect.x + rect.width;
+				m_ROI.ROI[i].Bottom = rect.y + rect.height;
+				m_ROI.ROI[i].DeltaQP = -4;
+			}
+
+			static mfxExtBuffer * extendedBuffers;
+			extendedBuffers = (mfxExtBuffer*)&m_ROI;
+
+			memset(&m_ctrl, 0, sizeof(mfxEncodeCtrl));
+			m_ctrl.NumExtParam = 1;
+			m_ctrl.ExtParam = &extendedBuffers;
+		}
+
+		sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface,
 				&m_pTaskPool[nTaskIdx].mfxBS,
 				&m_pTaskPool[nTaskIdx].syncp);
 

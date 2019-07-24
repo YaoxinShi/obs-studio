@@ -178,8 +178,10 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 		if (frame_num % 60 == 0)
 		{
 			txt_detection(pDataY, strideY, (pDataUV - pDataY) / strideY);
+			//rects_no_rotate.emplace_back(cv::Rect(0, 0, 128, 128));
+			//rects_no_rotate.emplace_back(cv::Rect(128, 128, 128, 128));
 			do_log(LOG_WARNING, "x=%d, y=%d", rects_no_rotate[0].x, rects_no_rotate[0].y);
-			pEncoder->UpdateSetting();
+			//[not use reset, use per frame control]pEncoder->UpdateSetting();
 		}
 		frame_num++;
 		sts = pEncoder->Encode(ts, pDataY, pDataUV, strideY, strideUV,

@@ -103,6 +103,7 @@ private:
 	mfxExtCodingOption2            m_co2;
 	mfxExtCodingOption             m_co;
 	mfxExtEncoderROI		m_ROI;
+	mfxEncodeCtrl			m_ctrl;
 	mfxExtEncoderResetOption	m_reset;
 	mfxU16                         m_nTaskPool;
 	Task*                          m_pTaskPool;
