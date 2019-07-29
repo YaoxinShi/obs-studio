@@ -251,7 +251,7 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	m_mfxEncParams.mfx.GopPicSize = (mfxU16)(pParams->nKeyIntSec *
 			pParams->nFpsNum / (float)pParams->nFpsDen);
 
-	static mfxExtBuffer* extendedBuffers[2];
+	static mfxExtBuffer* extendedBuffers[3];
 	int iBuffers = 0;
 	if (pParams->nAsyncDepth == 1) {
 		m_mfxEncParams.mfx.NumRefFrame = 1;
@@ -274,6 +274,17 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 		m_co2.Header.BufferSz = sizeof(m_co2);
 		m_co2.LookAheadDepth = pParams->nLADEPTH;
 		extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co2;
+	}
+	if (pParams->bCQM)
+	{
+		if (m_ver.Major == 1 && m_ver.Minor >= 16)
+		{
+			memset(&m_co3, 0, sizeof(mfxExtCodingOption3));
+			m_co3.Header.BufferId = MFX_EXTBUFF_CODING_OPTION3;
+			m_co3.Header.BufferSz = sizeof(m_co3);
+			m_co3.ScenarioInfo = 7; // MFX_SCENARIO_GAME_STREAMING
+			extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co3;
+		}
 	}
 
 	if (iBuffers > 0) {
