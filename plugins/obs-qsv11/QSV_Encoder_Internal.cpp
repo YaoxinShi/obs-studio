@@ -275,6 +275,17 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 		m_co2.LookAheadDepth = pParams->nLADEPTH;
 		extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co2;
 	}
+	if (pParams->bCQM)
+	{
+		if (m_ver.Major == 1 && m_ver.Minor >= 16)
+		{
+			memset(&m_co3, 0, sizeof(mfxExtCodingOption3));
+			m_co3.Header.BufferId = MFX_EXTBUFF_CODING_OPTION3;
+			m_co3.Header.BufferSz = sizeof(m_co3);
+			m_co3.ScenarioInfo = 7; // MFX_SCENARIO_GAME_STREAMING
+			extendedBuffers[iBuffers++] = (mfxExtBuffer*)& m_co3;
+		}
+	}
 
 	if (iBuffers > 0) {
 		m_mfxEncParams.ExtParam = extendedBuffers;

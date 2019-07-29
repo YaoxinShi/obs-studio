@@ -101,6 +101,7 @@ private:
 	mfxVideoParam                  m_parameter;
 	mfxExtCodingOption2            m_co2;
 	mfxExtCodingOption             m_co;
+	mfxExtCodingOption3            m_co3;
 	mfxU16                         m_nTaskPool;
 	Task*                          m_pTaskPool;
 	int                            m_nTaskIdx;

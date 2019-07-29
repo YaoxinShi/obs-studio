@@ -277,6 +277,8 @@ static obs_properties_t *obs_qsv_props(void *unused)
 	obs_properties_add_int(props, "icq_quality", TEXT_ICQ_QUALITY, 1, 51, 1);
 	obs_properties_add_int(props, "la_depth", TEXT_LA_DEPTH, 10, 100, 1);
 
+	obs_properties_add_bool(props, "CQM", "Customized quantization matrix");
+
 	return props;
 }
 
@@ -407,6 +409,8 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 		"\theight:         %d",
 		voi->fps_num, voi->fps_den,
 		width, height);
+
+	obsqsv->params.bCQM = (bool)obs_data_get_bool(settings, "CQM");
 
 	info("debug info:");
 }
