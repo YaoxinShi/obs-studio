@@ -124,9 +124,22 @@ std::map<std::string, InferencePlugin> plugins_for_devices;
 bool cnn_initialized = false;
 std::vector<cv::Rect> rects_no_rotate;
 int frame_num = 0;
+bool cnn_idle = true;
 
-int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
+int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex) {
     try {
+	    if (cnn_mutex != NULL)
+	    {
+		    pthread_mutex_lock(cnn_mutex);
+		    if (!cnn_idle)
+		    {
+			    do_log(LOG_WARNING, "Skip text detection for frame %d", frame_num);
+			    return 0;
+		    }
+		    do_log(LOG_WARNING, "Begin text detection for frame %d", frame_num);
+		    cnn_idle = false;
+		    pthread_mutex_unlock(cnn_mutex);
+	    }
         // ----------------------------- Parsing and validating input arguments ------------------------------
 
         double text_detection_postproc_time = 0;
@@ -220,12 +233,20 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
             }
 
 #if DISABLE_ROTATE_RECT
+		if (cnn_mutex != NULL)
+		{
+			pthread_mutex_lock(cnn_mutex);
+		}
             for (const auto &rect : rects) {
                 rects_no_rotate.emplace_back(rect.boundingRect());
             }
             //cv::groupRectangles(rects_no_rotate, 1, 2);
             merge_rect(rects_no_rotate);
             int num_found = static_cast<int>(rects_no_rotate.size());
+		if (cnn_mutex != NULL)
+		{
+			pthread_mutex_unlock(cnn_mutex);
+		}
 #else
             int num_found = text_recognition.is_initialized() ? 0 : static_cast<int>(rects.size());
 #endif
@@ -342,6 +363,13 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height) {
         }
 #endif
         // ---------------------------------------------------------------------------------------------------
+	if (cnn_mutex != NULL)
+	{
+		pthread_mutex_lock(cnn_mutex);
+		do_log(LOG_WARNING, "Done text detection for frame %d", frame_num);
+		cnn_idle = true;
+		pthread_mutex_unlock(cnn_mutex);
+	}
     } catch (const std::exception & ex) {
         std::cerr << ex.what() << std::endl;
         return EXIT_FAILURE;

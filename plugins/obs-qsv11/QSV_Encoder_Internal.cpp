@@ -60,7 +60,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mfxvideo++.h"
 #include <VersionHelpers.h>
 #include <obs-module.h>
-#include "text\cnn.hpp"
 
 #define do_log(level, format, ...) \
 	blog(level, "[qsv encoder: '%s'] " format, \
@@ -277,6 +276,12 @@ mfxStatus QSV_Encoder_Internal::Open(qsv_param_t * pParams)
 	if (sts >= MFX_ERR_NONE) {
 		g_numEncodersOpen++;
 	}
+#if MULTI_THREAD
+	if (pthread_mutex_init(&cnn_mutex, NULL) != 0)
+	{
+		return MFX_ERR_UNKNOWN;
+	}
+#endif
 	return sts;
 }
 
@@ -630,6 +635,9 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 
 	for (;;) {
 		// Encode a frame asynchronously (returns immediately)
+#if MULTI_THREAD
+		pthread_mutex_lock(&cnn_mutex);
+#endif
 		if (rects_no_rotate.size() > 0)
 		{
 			memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
@@ -655,6 +663,9 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 			m_ctrl.ExtParam = &extendedBuffers;
 		}
 
+#if MULTI_THREAD
+		pthread_mutex_unlock(&cnn_mutex);
+#endif
 		sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface,
 				&m_pTaskPool[nTaskIdx].mfxBS,
 				&m_pTaskPool[nTaskIdx].syncp);
@@ -737,6 +748,11 @@ mfxStatus QSV_Encoder_Internal::ClearData()
 		g_DX_Handle = NULL;
 	}
 	m_session.Close();
+
+#if MULTI_THREAD
+	pthread_mutex_destroy(&cnn_mutex);
+#endif
+
 	return sts;
 }
 

@@ -10,6 +10,8 @@
 #include <inference_engine.hpp>
 #include <opencv2/opencv.hpp>
 
+#include <util/threading.h>
+
 using namespace InferenceEngine;
 
 class Cnn {
@@ -41,7 +43,19 @@ class Cnn {
     size_t ncalls_;
 };
 
-int txt_detection(uint8_t * pY, uint32_t width, uint32_t height);
+class Cnn_input
+{
+public:
+	uint8_t * pY;
+	uint32_t width;
+	uint32_t height;
+	pthread_t cnn_thread;
+	pthread_mutex_t * cnn_mutex;
+};
+
+#define MULTI_THREAD 0
+
+int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex);
 extern std::vector<cv::Rect> rects_no_rotate;
 extern int frame_num;
 

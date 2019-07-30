@@ -58,6 +58,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mfxvideo++.h"
 #include "QSV_Encoder.h"
 #include "common_utils.h"
+#include "text\cnn.hpp"
 
 class QSV_Encoder_Internal
 {
@@ -115,5 +116,10 @@ private:
 	bool                           m_bD3D9HACK;
 	static mfxU16                  g_numEncodersOpen;
 	static mfxHDL                  g_DX_Handle; // we only want one handle for all instances to use;
+#if MULTI_THREAD
+public:
+	pthread_t	cnn_thread;
+	pthread_mutex_t	cnn_mutex;
+#endif
 };
 

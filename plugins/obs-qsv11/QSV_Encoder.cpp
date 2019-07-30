@@ -166,6 +166,16 @@ int qsv_encoder_headers(qsv_t *pContext, uint8_t **pSPS, uint8_t **pPPS,
 	return 0;
 }
 
+static void *cnn_thread_func(void *data)
+{
+	Cnn_input * in = (Cnn_input *)data;
+
+	txt_detection(in->pY, in->width, in->height, in->cnn_mutex);
+
+	pthread_detach(in->cnn_thread);
+	return NULL;
+}
+
 int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 		uint8_t *pDataUV, uint32_t strideY, uint32_t strideUV,
 		mfxBitstream **pBS)
@@ -177,7 +187,17 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 	{
 		if (frame_num % 60 == 0)
 		{
-			txt_detection(pDataY, strideY, (pDataUV - pDataY) / strideY);
+#if MULTI_THREAD
+			Cnn_input in;
+			in.pY = pDataY;
+			in.width = strideY;
+			in.height = (pDataUV - pDataY) / strideY;
+			in.cnn_thread = pEncoder->cnn_thread;
+			in.cnn_mutex = &pEncoder->cnn_mutex;
+			pthread_create(&pEncoder->cnn_thread, NULL, cnn_thread_func, &in);
+#else
+			txt_detection(pDataY, strideY, (pDataUV - pDataY) / strideY, NULL);
+#endif
 			//rects_no_rotate.emplace_back(cv::Rect(0, 0, 128, 128));
 			//rects_no_rotate.emplace_back(cv::Rect(128, 128, 128, 128));
 			do_log(LOG_WARNING, "x=%d, y=%d", rects_no_rotate[0].x, rects_no_rotate[0].y);
