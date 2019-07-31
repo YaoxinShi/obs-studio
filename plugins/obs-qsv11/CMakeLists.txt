@@ -1,5 +1,10 @@
 project(obs-qsv11)
 
+if(MSVC)
+	set(obs-qsv11_PLATFORM_DEPS
+		w32-pthreads)
+endif()
+
 include_directories(libmfx/include/msdk/include)
 include_directories(libmfx/include)
 
@@ -112,9 +117,12 @@ target_link_libraries(obs-qsv11
 	d3d11
 	dxva2
 	dxgi
+	${obs-qsv11_PLATFORM_DEPS}
 	${OpenCV_LIBS}
-	${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engined.lib
-	${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/tbb_debug.lib
+    debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engined.lib
+    debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/tbb_debug.lib
+    optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/tbb.lib
 	)
 
 target_compile_definitions(obs-qsv11 PRIVATE DX11_D3D)
