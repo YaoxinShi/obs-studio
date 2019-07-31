@@ -166,15 +166,20 @@ int qsv_encoder_headers(qsv_t *pContext, uint8_t **pSPS, uint8_t **pPPS,
 	return 0;
 }
 
+#if MULTI_THREAD
 static void *cnn_thread_func(void *data)
 {
-	Cnn_input * in = (Cnn_input *)data;
+	QSV_Encoder_Internal *pEncoder = (QSV_Encoder_Internal *)data;
 
-	txt_detection(in->pY, in->width, in->height, in->cnn_mutex);
+	while (os_sem_wait(pEncoder->cnn_sem) == 0) {
+		// todo: the data in pY maybe changed in encoding thread
+		txt_detection(cnn_in.pY, cnn_in.width, cnn_in.height, cnn_in.cnn_mutex);
+	}
 
-	pthread_detach(in->cnn_thread);
+	pthread_detach(pthread_self());
 	return NULL;
 }
+#endif
 
 int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 		uint8_t *pDataUV, uint32_t strideY, uint32_t strideUV,
@@ -188,19 +193,31 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 		if (frame_num % 60 == 0)
 		{
 #if MULTI_THREAD
-			Cnn_input in;
-			in.pY = pDataY;
-			in.width = strideY;
-			in.height = (pDataUV - pDataY) / strideY;
-			in.cnn_thread = pEncoder->cnn_thread;
-			in.cnn_mutex = &pEncoder->cnn_mutex;
-			pthread_create(&pEncoder->cnn_thread, NULL, cnn_thread_func, &in);
+			if (frame_num == 0)
+			{
+				do_log(LOG_WARNING, "create cnn thread, mutex=%p", &pEncoder->cnn_mutex);
+				pthread_create(&pEncoder->cnn_thread, NULL, cnn_thread_func, pEncoder);
+			}
+			pthread_mutex_lock(&pEncoder->cnn_mutex);
+			if (cnn_idle)
+			{
+				do_log(LOG_WARNING, "send cnn task, frame=%d", frame_num);
+				cnn_in.pY = pDataY;
+				cnn_in.width = strideY;
+				cnn_in.height = (pDataUV - pDataY) / strideY;
+				cnn_in.cnn_mutex = &pEncoder->cnn_mutex;
+				os_sem_post(pEncoder->cnn_sem);
+			}
+			else
+			{
+				do_log(LOG_WARNING, "skip cnn task, frame=%d", frame_num);
+			}
+			pthread_mutex_unlock(&pEncoder->cnn_mutex);
 #else
 			txt_detection(pDataY, strideY, (pDataUV - pDataY) / strideY, NULL);
 #endif
 			//rects_no_rotate.emplace_back(cv::Rect(0, 0, 128, 128));
 			//rects_no_rotate.emplace_back(cv::Rect(128, 128, 128, 128));
-			do_log(LOG_WARNING, "x=%d, y=%d", rects_no_rotate[0].x, rects_no_rotate[0].y);
 			//[not use reset, use per frame control]pEncoder->UpdateSetting();
 		}
 		frame_num++;

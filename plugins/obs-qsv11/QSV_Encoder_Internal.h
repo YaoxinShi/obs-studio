@@ -120,6 +120,7 @@ private:
 public:
 	pthread_t	cnn_thread;
 	pthread_mutex_t	cnn_mutex;
+	os_sem_t	*cnn_sem;
 #endif
 };
 

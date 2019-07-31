@@ -125,18 +125,21 @@ bool cnn_initialized = false;
 std::vector<cv::Rect> rects_no_rotate;
 int frame_num = 0;
 bool cnn_idle = true;
+Cnn_input cnn_in;
 
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex) {
     try {
+	    int fn = frame_num;
 	    if (cnn_mutex != NULL)
 	    {
+		    frame_num--; //as frame_num has been added 1 in encoding thread
 		    pthread_mutex_lock(cnn_mutex);
 		    if (!cnn_idle)
 		    {
-			    do_log(LOG_WARNING, "Skip text detection for frame %d", frame_num);
+			    do_log(LOG_WARNING, "Skip text detection for frame %d", fn);
 			    return 0;
 		    }
-		    do_log(LOG_WARNING, "Begin text detection for frame %d", frame_num);
+		    do_log(LOG_WARNING, "Begin text detection for frame %d", fn);
 		    cnn_idle = false;
 		    pthread_mutex_unlock(cnn_mutex);
 	    }
@@ -340,7 +343,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             if (SHOW_CV_OUTPUT_IMAGE)
 	    {
 		    do_log(LOG_WARNING, "cv show");
-                cv::putText(demo_image, "fps: " + std::to_string(fps) + " found: " + std::to_string(num_found) + " frame: " + std::to_string(frame_num),
+                cv::putText(demo_image, "fps: " + std::to_string(fps) + " found: " + std::to_string(num_found) + " frame: " + std::to_string(fn),
                             cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, 1, cv::Scalar(0, 0, 255), 1);
 		cv::namedWindow("Press any key to exit", cv::WINDOW_NORMAL);
 		cv::resizeWindow("Press any key to exit", 960, 540);
@@ -366,7 +369,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 	if (cnn_mutex != NULL)
 	{
 		pthread_mutex_lock(cnn_mutex);
-		do_log(LOG_WARNING, "Done text detection for frame %d", frame_num);
+		do_log(LOG_WARNING, "Done text detection for frame %d", fn);
 		cnn_idle = true;
 		pthread_mutex_unlock(cnn_mutex);
 	}

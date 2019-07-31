@@ -281,6 +281,10 @@ mfxStatus QSV_Encoder_Internal::Open(qsv_param_t * pParams)
 	{
 		return MFX_ERR_UNKNOWN;
 	}
+	if (os_sem_init(&cnn_sem, 0) != 0)
+	{
+		return MFX_ERR_UNKNOWN;
+	}
 #endif
 	return sts;
 }
@@ -638,8 +642,10 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 #if MULTI_THREAD
 		pthread_mutex_lock(&cnn_mutex);
 #endif
+		memset(&m_ctrl, 0, sizeof(mfxEncodeCtrl));
 		if (rects_no_rotate.size() > 0)
 		{
+			do_log(LOG_WARNING, "Encode frame=%d, x=%d, y=%d", frame_num, rects_no_rotate[0].x, rects_no_rotate[0].y);
 			memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
 			m_ROI.Header.BufferId = MFX_EXTBUFF_ENCODER_ROI;
 			m_ROI.Header.BufferSz = sizeof(m_ROI);
@@ -658,9 +664,12 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 			static mfxExtBuffer * extendedBuffers;
 			extendedBuffers = (mfxExtBuffer*)&m_ROI;
 
-			memset(&m_ctrl, 0, sizeof(mfxEncodeCtrl));
 			m_ctrl.NumExtParam = 1;
 			m_ctrl.ExtParam = &extendedBuffers;
+		}
+		else
+		{
+			do_log(LOG_WARNING, "Encode frame=%d, current rect num is 0", frame_num);
 		}
 
 #if MULTI_THREAD
@@ -750,7 +759,9 @@ mfxStatus QSV_Encoder_Internal::ClearData()
 	m_session.Close();
 
 #if MULTI_THREAD
+	pthread_join(cnn_thread, NULL);
 	pthread_mutex_destroy(&cnn_mutex);
+	os_sem_destroy(cnn_sem);
 #endif
 
 	return sts;

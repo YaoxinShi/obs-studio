@@ -49,13 +49,14 @@ public:
 	uint8_t * pY;
 	uint32_t width;
 	uint32_t height;
-	pthread_t cnn_thread;
 	pthread_mutex_t * cnn_mutex;
 };
 
-#define MULTI_THREAD 0
+#define MULTI_THREAD 1
 
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex);
+extern Cnn_input cnn_in;
 extern std::vector<cv::Rect> rects_no_rotate;
 extern int frame_num;
+extern bool cnn_idle;
 
