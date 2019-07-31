@@ -132,7 +132,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 	    int fn = frame_num;
 	    if (cnn_mutex != NULL)
 	    {
-		    frame_num--; //as frame_num has been added 1 in encoding thread
+		    fn--; //as frame_num has been added 1 in encoding thread
 		    pthread_mutex_lock(cnn_mutex);
 		    if (!cnn_idle)
 		    {
