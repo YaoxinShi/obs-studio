@@ -171,8 +171,27 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 			plugins_for_devices[device] = plugin;
 		}
 
-		std::string text_detection_model_path = "c:\\tmp\\text-detection-0002_FP16.xml";
+		std::string text_detection_model_path = ".\\text-detection-0002_FP16.xml";
 		std::string text_recognition_model_path = "";
+
+		FILE *fh = fopen(text_detection_model_path.c_str(), "r");
+		if (fh == NULL)
+		{
+			text_detection_model_path = "c:\\tmp\\text-detection-0002_FP16.xml";
+			fh = fopen(text_detection_model_path.c_str(), "r");
+			if (fh == NULL)
+			{
+				assert(0); // cannot file cn model
+			}
+			else
+			{
+				fclose(fh);
+			}
+		}
+		else
+		{
+			fclose(fh);
+		}
 
 		if (!text_detection_model_path.empty())
 		{
