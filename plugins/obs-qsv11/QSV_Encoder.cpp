@@ -64,6 +64,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <atomic>
 #include <intrin.h>
 #include "text\cnn.hpp"
+#include <opencv2/opencv.hpp>
 
 #define do_log(level, format, ...) \
 	blog(level, "[qsv encoder: '%s'] " format, \
@@ -172,10 +173,15 @@ static void *cnn_thread_func(void *data)
 	QSV_Encoder_Internal *pEncoder = (QSV_Encoder_Internal *)data;
 
 	while (os_sem_wait(pEncoder->cnn_sem) == 0) {
+		/* check to see if shutting down */
+		if (os_event_try(pEncoder->cnn_stop_event) == 0)
+			break;
+
 		// todo: the data in pY maybe changed in encoding thread
 		txt_detection(cnn_in.pY, cnn_in.width, cnn_in.height, cnn_in.cnn_mutex);
 	}
 
+	cv::destroyAllWindows();
 	pthread_detach(pthread_self());
 	return NULL;
 }

@@ -285,6 +285,10 @@ mfxStatus QSV_Encoder_Internal::Open(qsv_param_t * pParams)
 	{
 		return MFX_ERR_UNKNOWN;
 	}
+	if (os_event_init(&cnn_stop_event, OS_EVENT_TYPE_AUTO) != 0)
+	{
+		return MFX_ERR_UNKNOWN;
+	}
 #endif
 	return sts;
 }
@@ -759,9 +763,13 @@ mfxStatus QSV_Encoder_Internal::ClearData()
 	m_session.Close();
 
 #if MULTI_THREAD
-	pthread_join(cnn_thread, NULL);
+	os_event_signal(cnn_stop_event); // send stop event to cnn thread
+	os_sem_post(cnn_sem); //post a sem to run "while (os_sem_wait(pEncoder->cnn_sem) == 0)" one more time
+	pthread_join(cnn_thread, NULL); // wait until cnn_thread_func exit
+	//pthread_kill(cnn_thread, 9/*SIGKILL*/); // kill cnn thread directly. But as it cannot destroy the cv window thread, app will crash on next cv window update.
 	pthread_mutex_destroy(&cnn_mutex);
 	os_sem_destroy(cnn_sem);
+	os_event_destroy(cnn_stop_event);
 #endif
 
 	return sts;
