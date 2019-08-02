@@ -43,6 +43,8 @@ File Name: mfx_library_iterator.cpp
 
 #include <vector>
 
+extern "C" mfxU32 device_ids[4];
+
 namespace MFX
 {
 
@@ -280,6 +282,7 @@ mfxStatus MFXLibraryIterator::InitRegistry(eMfxImplType implType, mfxIMPL implIn
     if (m_implType != MFX_LIB_SOFTWARE)
     {
         mfxStatus mfxRes = MFX::SelectImplementationType(adapterNum, &m_implInterface, &m_vendorID, &m_deviceID);
+	device_ids[adapterNum] = m_deviceID;
         if (MFX_ERR_NONE != mfxRes)
         {
             return mfxRes;
