@@ -282,6 +282,15 @@ mfxStatus MFXLibraryIterator::InitRegistry(eMfxImplType implType, mfxIMPL implIn
     if (m_implType != MFX_LIB_SOFTWARE)
     {
         mfxStatus mfxRes = MFX::SelectImplementationType(adapterNum, &m_implInterface, &m_vendorID, &m_deviceID);
+// DevideId comes from:
+//   MFXLibraryIterator.m_deviceID
+//     DXVA2Device.m_deviceID
+//       DXGI1Device.m_deviceID
+//           pAdapter->GetDesc1(&desc); desc.DeviceId;
+//       D3D9Device.m_deviceID
+//           GetAdapterIdentifier(&adapterIdent); adapterIdent.DeviceId;
+// DevideId's definition can be found in:
+//   \HKEY_LOCAL_MACHINE\SOFTWARE\Intel\MediaSDK\Dispatch
 	device_ids[adapterNum] = m_deviceID;
         if (MFX_ERR_NONE != mfxRes)
         {
