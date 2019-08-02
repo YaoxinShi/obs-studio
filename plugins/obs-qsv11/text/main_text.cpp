@@ -259,6 +259,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 		{
 			pthread_mutex_lock(cnn_mutex);
 		}
+            rects_no_rotate.clear();
             for (const auto &rect : rects) {
                 rects_no_rotate.emplace_back(rect.boundingRect());
             }
