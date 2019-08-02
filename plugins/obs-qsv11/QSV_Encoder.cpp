@@ -78,14 +78,10 @@ void qsv_encoder_version(unsigned short *major, unsigned short *minor)
 	*minor = ver.Minor;
 }
 
-qsv_t *qsv_encoder_open(qsv_param_t *pParams, bool dGPU)
+qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 {
 	bool false_value = false;
 
-	if (dGPU)
-		impl = MFX_IMPL_HARDWARE2;
-	else
-		impl = MFX_IMPL_HARDWARE;
 	QSV_Encoder_Internal *pEncoder = new QSV_Encoder_Internal(impl, ver);
 	mfxStatus sts = pEncoder->Open(pParams);
 	if (sts != MFX_ERR_NONE) {
