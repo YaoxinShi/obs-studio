@@ -182,6 +182,8 @@ static void *cnn_thread_func(void *data)
 	}
 
 	cv::destroyAllWindows();
+	cnn_started = false;
+	cnn_idle = false;
 	pthread_detach(pthread_self());
 	return NULL;
 }
@@ -199,13 +201,15 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 		if (frame_num % 60 == 0)
 		{
 #if MULTI_THREAD
-			if (frame_num == 0)
+			if (! cnn_started)
 			{
 				do_log(LOG_WARNING, "create cnn thread, mutex=%p", &pEncoder->cnn_mutex);
 				pthread_create(&pEncoder->cnn_thread, NULL, cnn_thread_func, pEncoder);
+				cnn_started = true;
+				cnn_idle = true;
 			}
 			pthread_mutex_lock(&pEncoder->cnn_mutex);
-			if (cnn_idle)
+			if (cnn_initialized && cnn_started && cnn_idle)
 			{
 				do_log(LOG_WARNING, "send cnn task, frame=%d", frame_num);
 				cnn_in.pY = pDataY;

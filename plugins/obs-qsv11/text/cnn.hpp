@@ -58,5 +58,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 extern Cnn_input cnn_in;
 extern std::vector<cv::Rect> rects_no_rotate;
 extern int frame_num;
+extern bool cnn_initialized;
 extern bool cnn_idle;
+extern bool cnn_started;
 

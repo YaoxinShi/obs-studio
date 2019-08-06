@@ -18,6 +18,7 @@
 #include <inference_engine.hpp>
 
 #include "cnn.hpp"
+#include "main_text.h"
 #include "image_grabber.hpp"
 #include "text_detection.hpp"
 #include "text_recognition.hpp"
@@ -119,45 +120,51 @@ int clip(int x, int max_val) {
     return std::min(std::max(x, 0), max_val);
 }
 
+// OpenVINO internal
 Cnn text_detection, text_recognition;
 std::map<std::string, InferencePlugin> plugins_for_devices;
-bool cnn_initialized = false;
-std::vector<cv::Rect> rects_no_rotate;
-int frame_num = 0;
-bool cnn_idle = true;
+// in
 Cnn_input cnn_in;
+// out
+std::vector<cv::Rect> rects_no_rotate;
+// unique frame index
+int frame_num = 0;
+// cnn state
+//--------------------------------------------------
+//  OBS thead		Encode thread		CNN init thread		CNN thread
+//..load QSV splugin..
+//						cnn_initialized=false
+//						..init cnn..
+//						cnn_initialized=true
+//			..start recording..
+//									cnn_started=false
+//									..create CNN thread..
+//									cnn_started=true
+//									cnn_idle=true
+//			..send CNN task..
+//									cnn_idle=false
+//									..run inference..
+//			..skip CNN task..				..run inference..
+//			..skip CNN task..				..run inference..
+//			..skip CNN task..				..run inference..
+//									cnn_idle=true
+//			..send CNN task..
+//									cnn_idle=false
+//									..run inference..
+//			..skip CNN task..				..run inference..
+//			..skip CNN task..				..run inference..
+//			..skip CNN task..				..run inference..
+//									cnn_idle=true
+//			..stop recording..
+//									..kill CNN thread..
+//									cnn_started=false
+//									cnn_idle=false
+bool cnn_initialized = false;
+bool cnn_started = false;
+bool cnn_idle = false;
 
-int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex) {
-    try {
-	    int fn = frame_num;
-	    if (cnn_mutex != NULL)
-	    {
-		    fn--; //as frame_num has been added 1 in encoding thread
-		    pthread_mutex_lock(cnn_mutex);
-		    if (!cnn_idle)
-		    {
-			    do_log(LOG_WARNING, "Skip text detection for frame %d", fn);
-			    return 0;
-		    }
-		    do_log(LOG_WARNING, "Begin text detection for frame %d", fn);
-		    cnn_idle = false;
-		    pthread_mutex_unlock(cnn_mutex);
-	    }
-        // ----------------------------- Parsing and validating input arguments ------------------------------
-
-        double text_detection_postproc_time = 0;
-        double text_recognition_postproc_time = 0;
-        double text_crop_time = 0;
-        double avg_time = 0;
-        const double avg_time_decay = 0.8;
-
-        const char kPadSymbol = '#';
-        std::string kAlphabet = std::string("0123456789abcdefghijklmnopqrstuvwxyz") + kPadSymbol;
-
-        const double min_text_recognition_confidence = 0.2;
-	float cls_conf_threshold = static_cast<float>(0.8);
-	float link_conf_threshold = static_cast<float>(0.8);
-
+int cnn_init()
+{
 	std::vector<std::string> devices = { "GPU", "CPU" };
 	if (!cnn_initialized)
 	{
@@ -205,7 +212,52 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 			text_recognition.Init(text_recognition_model_path, &plugins_for_devices[devices[1]]);
 		}
 		cnn_initialized = true;
+		do_log(LOG_WARNING, "Init plugins, done");
 	}
+	return 1;
+}
+
+int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex) {
+    try {
+	    int fn = frame_num;
+	    if (!cnn_initialized)
+	    {
+		    do_log(LOG_WARNING, "SHOULD NOT COME HERE! Skip text detection as cnn not initizlized");
+		    return 0;
+	    }
+	    if (!cnn_started)
+	    {
+		    do_log(LOG_WARNING, "SHOULD NOT COME HERE! Skip text detection as cnn not started");
+		    return 0;
+	    }
+	    if (cnn_mutex != NULL)
+	    {
+		    fn--; //as frame_num has been added 1 in encoding thread
+		    pthread_mutex_lock(cnn_mutex);
+		    if (!cnn_idle)
+		    {
+			    do_log(LOG_WARNING, "SHOULD NOT COME HERE! Skip text detection for frame %d", fn);
+			    return 0;
+		    }
+		    do_log(LOG_WARNING, "Begin text detection for frame %d", fn);
+		    cnn_idle = false;
+		    pthread_mutex_unlock(cnn_mutex);
+
+	    }
+        // ----------------------------- Parsing and validating input arguments ------------------------------
+
+        double text_detection_postproc_time = 0;
+        double text_recognition_postproc_time = 0;
+        double text_crop_time = 0;
+        double avg_time = 0;
+        const double avg_time_decay = 0.8;
+
+        const char kPadSymbol = '#';
+        std::string kAlphabet = std::string("0123456789abcdefghijklmnopqrstuvwxyz") + kPadSymbol;
+
+        const double min_text_recognition_confidence = 0.2;
+	float cls_conf_threshold = static_cast<float>(0.8);
+	float link_conf_threshold = static_cast<float>(0.8);
 
 #if USE_OBS_INPUT
 	cv::Mat image;

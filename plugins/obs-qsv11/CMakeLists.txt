@@ -79,6 +79,7 @@ set(text_SOURCES
 set(text_HEADERS
 	text/cnn.hpp
 	text/image_grabber.hpp
+	text/main_text.h
 	text/text_detection.hpp
 	text/text_recognition.hpp)
 

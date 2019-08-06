@@ -55,6 +55,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <obs-module.h>
 #include "mfxsession.h"
+#include <pthread.h>
+#include "text\main_text.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-qsv11", "en-US")
@@ -64,6 +66,15 @@ MODULE_EXPORT const char *obs_module_description(void)
 }
 
 extern struct obs_encoder_info obs_qsv_encoder;
+
+#if 1//MULTI_THREAD
+void *cnn_init_func(void *data)
+{
+	cnn_init();
+	pthread_detach(pthread_self());
+	return NULL;
+}
+#endif
 
 bool obs_module_load(void)
 {
@@ -77,6 +88,10 @@ bool obs_module_load(void)
 	if (sts == MFX_ERR_NONE) {
 		obs_register_encoder(&obs_qsv_encoder);
 		MFXClose(session);
+#if 1//MULTI_THREAD
+		pthread_t cnn_init_thread;
+		pthread_create(&cnn_init_thread, NULL, cnn_init_func, NULL);
+#endif
 	} else {
 		impl = MFX_IMPL_HARDWARE_ANY | MFX_IMPL_VIA_D3D9;
 		sts = MFXInit(impl, &ver, &session);
