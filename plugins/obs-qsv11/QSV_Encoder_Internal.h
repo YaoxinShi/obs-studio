@@ -94,8 +94,8 @@ private:
 	mfxFrameSurface1**             m_pmfxSurfaces;
 	mfxU16                         m_nSurfNum;
 	MFXVideoENCODE*                m_pmfxENC;
-	mfxU8                          m_SPSBuffer[100];
-	mfxU8                          m_PPSBuffer[100];
+	mfxU8                          m_SPSBuffer[1024];
+	mfxU8                          m_PPSBuffer[1024];
 	mfxU16                         m_nSPSBufferSize;
 	mfxU16                         m_nPPSBufferSize;
 	mfxVideoParam                  m_parameter;

@@ -75,8 +75,8 @@ mfxU16 QSV_Encoder_Internal::g_numEncodersOpen = 0;
 QSV_Encoder_Internal::QSV_Encoder_Internal(mfxIMPL& impl, mfxVersion& version) :
 	m_pmfxSurfaces(NULL),
 	m_pmfxENC(NULL),
-	m_nSPSBufferSize(100),
-	m_nPPSBufferSize(100),
+	m_nSPSBufferSize(1024),
+	m_nPPSBufferSize(1024),
 	m_nTaskPool(0),
 	m_pTaskPool(NULL),
 	m_nTaskIdx(0),
@@ -251,7 +251,7 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	m_mfxEncParams.mfx.GopPicSize = (mfxU16)(pParams->nKeyIntSec *
 			pParams->nFpsNum / (float)pParams->nFpsDen);
 
-	static mfxExtBuffer* extendedBuffers[2];
+	static mfxExtBuffer* extendedBuffers[3];
 	int iBuffers = 0;
 	if (pParams->nAsyncDepth == 1) {
 		m_mfxEncParams.mfx.NumRefFrame = 1;
@@ -382,8 +382,8 @@ mfxStatus QSV_Encoder_Internal::GetVideoParam()
 
 	opt.SPSBuffer = m_SPSBuffer;
 	opt.PPSBuffer = m_PPSBuffer;
-	opt.SPSBufSize = 100; //  m_nSPSBufferSize;
-	opt.PPSBufSize = 100; //  m_nPPSBufferSize;
+	opt.SPSBufSize = 1024; //  m_nSPSBufferSize;
+	opt.PPSBufSize = 1024; //  m_nPPSBufferSize;
 
 	mfxStatus sts = m_pmfxENC->GetVideoParam(&m_parameter);
 	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
