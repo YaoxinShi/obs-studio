@@ -127,7 +127,7 @@ mfxStatus SelectImplementationType(const mfxU32 adapterNum, mfxIMPL *pImplInterf
         *pVendorID = dxvaDevice.GetVendorID();
         *pDeviceID = dxvaDevice.GetDeviceID();
     }
-
+    device_ids[adapterNum] = *pDeviceID;
     return MFX_ERR_NONE;
 }
 
@@ -291,7 +291,10 @@ mfxStatus MFXLibraryIterator::InitRegistry(eMfxImplType implType, mfxIMPL implIn
 //           GetAdapterIdentifier(&adapterIdent); adapterIdent.DeviceId;
 // DevideId's definition can be found in:
 //   \HKEY_LOCAL_MACHINE\SOFTWARE\Intel\MediaSDK\Dispatch
-	device_ids[adapterNum] = m_deviceID;
+
+	// Move inside SelectImplementationType(), because "try to load the
+	// selected DLL using default DLL search mechanism" will also call this function
+	/*device_ids[adapterNum] = m_deviceID;*/
         if (MFX_ERR_NONE != mfxRes)
         {
             return mfxRes;

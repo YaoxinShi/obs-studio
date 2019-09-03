@@ -89,7 +89,7 @@ bool obs_module_load(void)
 	}
 
 	// load QSV encoder on adapter 1
-	impl = MFX_IMPL_HARDWARE | MFX_IMPL_VIA_D3D11; // todo: MFX_IMPL_HARDWARE -> MFX_IMPL_HARDWARE2
+	impl = MFX_IMPL_HARDWARE2 | MFX_IMPL_VIA_D3D11; // todo: MFX_IMPL_HARDWARE -> MFX_IMPL_HARDWARE2
 
 	sts = MFXInit(impl, &ver, &session);
 
@@ -98,7 +98,7 @@ bool obs_module_load(void)
 		MFXClose(session);
 	}
 	else {
-		impl = MFX_IMPL_HARDWARE | MFX_IMPL_VIA_D3D9; // todo: MFX_IMPL_HARDWARE -> MFX_IMPL_HARDWARE2
+		impl = MFX_IMPL_HARDWARE2 | MFX_IMPL_VIA_D3D9; // todo: MFX_IMPL_HARDWARE -> MFX_IMPL_HARDWARE2
 		sts = MFXInit(impl, &ver, &session);
 		if (sts == MFX_ERR_NONE) {
 			obs_register_encoder(&obs_qsv_encoder2);

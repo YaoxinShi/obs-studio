@@ -83,7 +83,7 @@ qsv_t *qsv_encoder_open(qsv_param_t *pParams, int adapter)
 	bool false_value = false;
 
 	if (adapter == 1)
-		impl = MFX_IMPL_HARDWARE;  // todo: MFX_IMPL_HARDWARE -> MFX_IMPL_HARDWARE2
+		impl = MFX_IMPL_HARDWARE2;  // todo: MFX_IMPL_HARDWARE -> MFX_IMPL_HARDWARE2
 	else
 		impl = MFX_IMPL_HARDWARE;
 	QSV_Encoder_Internal *pEncoder = new QSV_Encoder_Internal(impl, ver);
