@@ -419,8 +419,8 @@ mfxStatus MFXInitEx(mfxInitParam par, mfxSession *session)
                     }
                     mfxU32 curVendorID = 0, curDeviceID = 0;
                     mfxRes = MFX::SelectImplementationType(implTypes[curImplIdx].adapterID, &implInterface, &curVendorID, &curDeviceID);
-		    // current DG1, vendor id = 0x1414, device id = 0x8c
-                    if (curVendorID != INTEL_VENDOR_ID && curVendorID != 0x1414)
+		    // ignore Microsoft basic renderer, vendor id = 0x1414, device id = 0x8c
+                    if (curVendorID != INTEL_VENDOR_ID)
                         mfxRes = MFX_ERR_UNKNOWN;
                 }
                 if (MFX_ERR_NONE == mfxRes)
