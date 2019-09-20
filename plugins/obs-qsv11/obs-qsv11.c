@@ -231,8 +231,9 @@ static bool profile_modified(obs_properties_t* ppts, obs_property_t* p,
 	obs_data_t* settings)
 {
 	const char* profile = obs_data_get_string(settings, "profile");
+	enum qsv_cpu_platform plat = qsv_get_cpu_platform();
 
-	bool bVisible =	(astrcmpi(profile, "high") == 0);
+	bool bVisible =	((astrcmpi(profile, "high") == 0) && (plat >= QSV_CPU_PLATFORM_ICL));
 	p = obs_properties_get(ppts, "CQM");
 	obs_property_set_visible(p, bVisible);
 
