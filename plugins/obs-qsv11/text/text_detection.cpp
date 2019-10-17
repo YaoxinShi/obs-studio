@@ -3,6 +3,7 @@
 //
 
 #include "text_detection.hpp"
+#include "cnn.hpp"
 
 #include <algorithm>
 #include <string>
@@ -185,6 +186,32 @@ cv::Mat decodeImageByJoin(const std::vector<float> &cls_data, const std::vector<
 
 std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, const cv::Size& image_size,
                                          float cls_conf_threshold, float link_conf_threshold) {
+#if SSD_TEXT
+	const std::string kLocOutputName = "detection_out";
+	auto link_shape = blobs.at(kLocOutputName)->getTensorDesc().getDims();
+	size_t link_data_size = link_shape[0] * link_shape[1] * link_shape[2] * link_shape[3];
+	float *link_data_pointer =
+		blobs.at(kLocOutputName)->buffer().as<PrecisionTrait<Precision::FP32>::value_type *>();
+	std::vector<float> link_data(link_data_pointer, link_data_pointer + link_data_size);
+
+	//out size is [1, 1, x, 7]，其中x是最后保留的框的个数, x=200
+	//最后一维存放的数据为：[image_id, label, confidence, xmin, ymin, xmax, ymax]
+	std::vector<cv::RotatedRect> rects;
+	for (int i = 0; i < 200; i++)
+	{
+		float conf = link_data[i * 7 + 2];
+		if (conf > /*cls_conf_threshold*/0.1)
+		{
+			cv::Point2f a(link_data[i * 7 + 3] * image_size.width, link_data[i * 7 + 4] * image_size.height);   // left-top point A
+			cv::Point2f b(link_data[i * 7 + 5] * image_size.width, link_data[i * 7 + 6] * image_size.height);   // right-bottom point B
+			cv::RotatedRect rr(0.5*(a+b), // center
+				cv::Size2f((float)fabs(a.x-b.x), fabs(a.y-b.y)), // size
+				0.f); //angle
+			rects.emplace_back(rr);
+		}
+	}
+	return rects;
+#else
     const std::string kLocOutputName = "pixel_link/add_2";
     const std::string kClsOutputName = "pixel_cls/add_2";
     const int kMinArea = 300/4;
@@ -223,4 +250,5 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
                                                      static_cast<float>(kMinHeight), image_size);
 
     return rects;
+#endif
 }

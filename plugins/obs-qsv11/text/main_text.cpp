@@ -178,7 +178,11 @@ int cnn_init()
 			plugins_for_devices[device] = plugin;
 		}
 
+#if SSD_TEXT
+		std::string text_detection_model_path = ".\\VGG_scenetext_SSD_300x300_iter_60000.xml";
+#else
 		std::string text_detection_model_path = ".\\text-detection-0004_FP16.xml";
+#endif
 		std::string text_recognition_model_path = "";
 
 		FILE *fh = fopen(text_detection_model_path.c_str(), "r");
@@ -203,7 +207,11 @@ int cnn_init()
 		if (!text_detection_model_path.empty())
 		{
 			do_log(LOG_WARNING, "Init text detection NN");
+#if SSD_TEXT
+			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(300, 300));
+#else
 			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
+#endif
 		}
 
 		if (!text_recognition_model_path.empty())
