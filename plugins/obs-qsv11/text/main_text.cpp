@@ -215,7 +215,7 @@ int cnn_init()
 			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(300, 300));
 #else
 #if NEW_TEXT
-			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
+			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(640, 384));
 #else
 			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
 #endif
