@@ -181,7 +181,11 @@ int cnn_init()
 #if SSD_TEXT
 		std::string text_detection_model_path = ".\\VGG_scenetext_SSD_300x300_iter_60000.xml";
 #else
+#if NEW_TEXT
+		std::string text_detection_model_path = ".\\detection_INT8.xml";
+#else
 		std::string text_detection_model_path = ".\\text-detection-0004_FP16.xml";
+#endif
 #endif
 		std::string text_recognition_model_path = "";
 
@@ -210,7 +214,11 @@ int cnn_init()
 #if SSD_TEXT
 			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(300, 300));
 #else
+#if NEW_TEXT
 			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
+#else
+			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
+#endif
 #endif
 		}
 

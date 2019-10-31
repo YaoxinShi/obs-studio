@@ -212,8 +212,13 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
 	}
 	return rects;
 #else
+#if NEW_TEXT
+    const std::string kLocOutputName = "model/link_logits_/add";
+    const std::string kClsOutputName = "model/segm_logits/add";
+#else
     const std::string kLocOutputName = "pixel_link/add_2";
     const std::string kClsOutputName = "pixel_cls/add_2";
+#endif
     const int kMinArea = 300/4;
     const int kMinHeight = 10/2;
 
