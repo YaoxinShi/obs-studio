@@ -428,11 +428,22 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             }
             int fps = static_cast<int>(1000 / avg_time);
 
+            draw_end = std::chrono::steady_clock::now();
+	    do_log(LOG_WARNING, "=== inference %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(infer_end - infer_begin).count());
+	    do_log(LOG_WARNING, "=== postprocess %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(pp_end - pp_begin).count());
+	    do_log(LOG_WARNING, "=== draw %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count());
+
             if (SHOW_CV_OUTPUT_IMAGE)
 	    {
 		    do_log(LOG_WARNING, "cv show");
-                cv::putText(demo_image, "fps: " + std::to_string(fps) + " found: " + std::to_string(num_found) + " frame: " + std::to_string(fn),
-                            cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, 1, cv::Scalar(0, 0, 255), 1);
+                cv::putText(demo_image,
+			"inference(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(infer_end - infer_begin).count()) + 
+			", postprocess(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(pp_end - pp_begin).count()) + 
+			", draw(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count()) + 
+			", fps: " + std::to_string(fps) + \
+			", found: " + std::to_string(num_found) + \
+			", frame: " + std::to_string(fn),
+                            cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
 		cv::namedWindow("Press any key to exit", cv::WINDOW_NORMAL);
 		cv::resizeWindow("Press any key to exit", 960, 540);
 		//cv::startWindowThread();
@@ -440,11 +451,6 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 		char k = cv::waitKey(10); // 10ms, 0 means infinite, cv::waitKey is a must for cv::imshow
 		if (k == 27) cv::destroyAllWindows(); //key 27 is ESC
             }
-
-            draw_end = std::chrono::steady_clock::now();
-	    do_log(LOG_WARNING, "=== inference %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(infer_end - infer_begin).count());
-	    do_log(LOG_WARNING, "=== postprocess %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(pp_end - pp_begin).count());
-	    do_log(LOG_WARNING, "=== draw %d (ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count());
 
 #if ! USE_OBS_INPUT
             if (!is_image)
