@@ -182,7 +182,8 @@ int cnn_init()
 		std::string text_detection_model_path = ".\\VGG_scenetext_SSD_300x300_iter_60000.xml";
 #else
 #if NEW_TEXT
-		std::string text_detection_model_path = ".\\detection_INT8.xml";
+		//std::string text_detection_model_path = ".\\detection_INT8.xml";
+		std::string text_detection_model_path = ".\\detection_FP16.xml";
 #else
 		std::string text_detection_model_path = ".\\text-detection-0004_FP16.xml";
 #endif
