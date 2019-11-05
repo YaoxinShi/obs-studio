@@ -198,7 +198,7 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 
 	if (pDataY != NULL && pDataUV != NULL)
 	{
-		if (frame_num % 60 == 0)
+		//if (frame_num % 60 == 0)
 		{
 #if MULTI_THREAD
 			if (! cnn_started)
