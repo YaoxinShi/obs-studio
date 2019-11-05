@@ -160,7 +160,7 @@ static void obs_qsv_defaults(obs_data_t *settings)
 
 	obs_data_set_default_int(settings, "keyint_sec", 3);
     obs_data_set_default_int(settings, "bframes", 3);
-	obs_data_set_default_bool(settings, "mbbrc", true);
+	obs_data_set_default_bool(settings, "mbbrc", false);
 	obs_data_set_default_bool(settings, "ffmode", false);
 }
 
