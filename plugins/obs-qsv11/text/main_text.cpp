@@ -86,6 +86,10 @@ cv::Rect combine_two_rect(const cv::Rect r1, const cv::Rect r2)
 
 void merge_rect(std::vector<cv::Rect>& rects)
 {
+    //check size
+    if (rects.size() == 0)
+        return;
+
     //merge
     int index = 0;
     cv::Rect rect, rect2;
@@ -216,7 +220,7 @@ int cnn_init()
 			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(300, 300));
 #else
 #if NEW_TEXT
-			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(640, 384));
+			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(320, 192));
 #else
 			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
 #endif
@@ -315,6 +319,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             }
 
             draw_begin = std::chrono::steady_clock::now();
+            do_log(LOG_WARNING, "num found=%d", rects.size());
 	    int max_rect_num = 50;
             if (static_cast<int>(rects.size()) > max_rect_num) {
                 std::sort(rects.begin(), rects.end(), [](const cv::RotatedRect & a, const cv::RotatedRect & b) {
