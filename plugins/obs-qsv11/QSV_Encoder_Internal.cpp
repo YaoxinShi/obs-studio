@@ -659,7 +659,7 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 				m_ROI.ROI[i].Top = rect.y;
 				m_ROI.ROI[i].Right = rect.x + rect.width;
 				m_ROI.ROI[i].Bottom = rect.y + rect.height;
-				m_ROI.ROI[i].DeltaQP = -4;
+				m_ROI.ROI[i].DeltaQP = -6;
 			}
 
 			static mfxExtBuffer * extendedBuffers;
