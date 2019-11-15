@@ -13,7 +13,7 @@ static std::string fileNameNoExt(const std::string &filepath) {
 	return filepath.substr(0, pos);
 }
 
-void Cnn::Init(const std::string &model_path, InferencePlugin *plugin, const cv::Size &new_input_resolution) {
+void Cnn::Init(const std::string &model_path, Core & ie, const std::string & deviceName, const cv::Size &new_input_resolution) {
     // ---------------------------------------------------------------------------------------------------
 
     // --------------------------- 1. Reading network ----------------------------------------------------
@@ -66,7 +66,7 @@ void Cnn::Init(const std::string &model_path, InferencePlugin *plugin, const cv:
     // ---------------------------------------------------------------------------------------------------
 
     // --------------------------- Loading model to the plugin -------------------------------------------
-    ExecutableNetwork executable_network = plugin->LoadNetwork(network, {});
+    ExecutableNetwork executable_network = ie.LoadNetwork(network, deviceName);
     // ---------------------------------------------------------------------------------------------------
 
     // --------------------------- Creating infer request ------------------------------------------------

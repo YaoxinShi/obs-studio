@@ -169,18 +169,20 @@ bool cnn_idle = false;
 
 int cnn_init()
 {
-	std::vector<std::string> devices = { "GPU", "CPU" };
+	//std::vector<std::string> devices = { "GPU", "CPU" };
+	Core ie;
 	if (!cnn_initialized)
 	{
 		//std::cout << "Init plugins" << std::endl;
 		do_log(LOG_WARNING, "Init plugins");
-		for (const auto &device : devices) {
-			if (plugins_for_devices.find(device) != plugins_for_devices.end()) {
-				continue;
-			}
-			InferencePlugin plugin = PluginDispatcher().getPluginByDevice(device);
-			plugins_for_devices[device] = plugin;
-		}
+		//for (const auto &device : devices) {
+		//	if (plugins_for_devices.find(device) != plugins_for_devices.end()) {
+		//		continue;
+		//	}
+		//	InferencePlugin plugin = PluginDispatcher().getPluginByDevice(device);
+		//	plugins_for_devices[device] = plugin;
+		//}
+		ie.GetVersions("GPU");
 
 #if SSD_TEXT
 		std::string text_detection_model_path = ".\\VGG_scenetext_SSD_300x300_iter_60000.xml";
@@ -217,12 +219,15 @@ int cnn_init()
 		{
 			do_log(LOG_WARNING, "Init text detection NN");
 #if SSD_TEXT
-			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(300, 300));
+			//text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(300, 300));
+			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(300, 300));
 #else
 #if NEW_TEXT
-			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(320, 192));
+			//text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(320, 192));
+			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(320, 192));
 #else
-			text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
+			//text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
+			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(1280, 768));
 #endif
 #endif
 		}
@@ -230,7 +235,8 @@ int cnn_init()
 		if (!text_recognition_model_path.empty())
 		{
 			do_log(LOG_WARNING, "Init text recognition NN");
-			text_recognition.Init(text_recognition_model_path, &plugins_for_devices[devices[1]]);
+			//text_recognition.Init(text_recognition_model_path, &plugins_for_devices[devices[1]]);
+			text_recognition.Init(text_recognition_model_path, ie, "GPU");
 		}
 		cnn_initialized = true;
 		do_log(LOG_WARNING, "Init plugins, done");
