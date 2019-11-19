@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <vector>
 
+#define disable_link_value 1
+
 namespace {
 void softmax(std::vector<float>* data) {
     auto &rdata = *data;
@@ -155,10 +157,12 @@ cv::Mat decodeImageByJoin(const std::vector<float> &cls_data, const std::vector<
         }
     }
 
+#if ! disable_link_value
     std::vector<uchar> link_mask(link_data.size(), 0);
     for (size_t i = 0; i < link_mask.size(); i++) {
         link_mask[i] = link_data[i] >= link_conf_threshold;
     }
+#endif
 
     int neighbours = link_data_shape[3];
     for (const auto &point : points) {
@@ -169,8 +173,12 @@ cv::Mat decodeImageByJoin(const std::vector<float> &cls_data, const std::vector<
                     continue;
                 if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
                     uchar pixel_value = pixel_mask[static_cast<size_t>(ny * w + nx)];
+#if ! disable_link_value
                     uchar link_value = link_mask[static_cast<size_t>(point.y * w * neighbours +
                                                                      point.x * neighbours + neighbour)];
+#else
+		    uchar link_value = true;
+#endif
                     if (pixel_value && link_value) {
                         join(point.x + point.y * w, nx + ny * w, &group_mask);
                     }
@@ -227,9 +235,11 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
     float *link_data_pointer =
             blobs.at(kLocOutputName)->buffer().as<PrecisionTrait<Precision::FP32>::value_type *>();
     std::vector<float> link_data(link_data_pointer, link_data_pointer + link_data_size);
+#if ! disable_link_value
     link_data = transpose4d(link_data, ieSizeToVector(link_shape), {0, 2, 3, 1});
     softmax(&link_data);
     link_data = sliceAndGetSecondChannel(link_data);
+#endif
     std::vector<int> new_link_data_shape(4);
     new_link_data_shape[0] = static_cast<int>(link_shape[0]);
     new_link_data_shape[1] = static_cast<int>(link_shape[2]);
