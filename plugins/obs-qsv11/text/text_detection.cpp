@@ -10,6 +10,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include <obs-module.h>
+#define do_log(level, format, ...) \
+	blog(level, "[text detection: '%s'] " format, \
+			"aaa", ##__VA_ARGS__)
+
 #define disable_link_value 1
 
 namespace {
@@ -94,9 +99,15 @@ std::vector<cv::RotatedRect> maskToBoxes(const cv::Mat &mask, float min_area, fl
             continue;
         cv::RotatedRect r = cv::minAreaRect(contours[0]);
         if (std::min(r.size.width, r.size.height) < min_height)
+        {
+            do_log(LOG_WARNING, "kill rect by height");
             continue;
+        }
         if (r.size.area() < min_area)
+        {
+            do_log(LOG_WARNING, "kill rect by area");
             continue;
+        }
         bboxes.emplace_back(r);
     }
 

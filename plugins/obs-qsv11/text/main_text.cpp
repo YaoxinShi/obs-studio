@@ -104,6 +104,7 @@ void merge_rect(std::vector<cv::Rect>& rects)
             {
                 rects.erase(rects.begin() + j);
                 rects.erase(rects.begin() + index);
+                do_log(LOG_WARNING, "kill rect by merge");
                 rects.emplace_back(combine_two_rect(rect,rect2));
                 goto L_start;
             }
@@ -116,6 +117,7 @@ void merge_rect(std::vector<cv::Rect>& rects)
 	    return a.area() > b.area();
     });
     if (static_cast<int>(rects.size()) > MAX_ROI_REGION_NUMBER) {
+	    do_log(LOG_WARNING, "kill rect by merge_rect size limitation");
 	    rects.resize(MAX_ROI_REGION_NUMBER);
     }
 }
