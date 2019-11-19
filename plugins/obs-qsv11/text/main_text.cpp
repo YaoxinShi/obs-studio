@@ -283,8 +283,8 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
         std::string kAlphabet = std::string("0123456789abcdefghijklmnopqrstuvwxyz") + kPadSymbol;
 
         const double min_text_recognition_confidence = 0.2;
-	float cls_conf_threshold = static_cast<float>(0.8);
-	float link_conf_threshold = static_cast<float>(0.8);
+	float cls_conf_threshold = static_cast<float>(0.5);
+	float link_conf_threshold = static_cast<float>(0.5);
 
 #if USE_OBS_INPUT
 	cv::Mat image;
