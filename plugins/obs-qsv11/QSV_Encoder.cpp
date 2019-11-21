@@ -209,18 +209,25 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 				cnn_idle = true;
 			}
 			pthread_mutex_lock(&pEncoder->cnn_mutex);
-			if (cnn_initialized && cnn_started && cnn_idle)
+			if (enable_roi)
 			{
-				do_log(LOG_WARNING, "send cnn task, frame=%d", frame_num);
-				cnn_in.pY = pDataY;
-				cnn_in.width = strideY;
-				cnn_in.height = (pDataUV - pDataY) / strideY;
-				cnn_in.cnn_mutex = &pEncoder->cnn_mutex;
-				os_sem_post(pEncoder->cnn_sem);
+				if (cnn_initialized && cnn_started && cnn_idle)
+				{
+					do_log(LOG_WARNING, "send cnn task, frame=%d", frame_num);
+					cnn_in.pY = pDataY;
+					cnn_in.width = strideY;
+					cnn_in.height = (pDataUV - pDataY) / strideY;
+					cnn_in.cnn_mutex = &pEncoder->cnn_mutex;
+					os_sem_post(pEncoder->cnn_sem);
+				}
+				else
+				{
+					do_log(LOG_WARNING, "skip cnn task, frame=%d", frame_num);
+				}
 			}
 			else
 			{
-				do_log(LOG_WARNING, "skip cnn task, frame=%d", frame_num);
+				do_log(LOG_WARNING, "ROI is disabled by OBS setting");
 			}
 			pthread_mutex_unlock(&pEncoder->cnn_mutex);
 #else

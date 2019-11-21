@@ -366,6 +366,10 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	m_co2.Header.BufferSz = sizeof(m_co2);
 	if (pParams->bMBBRC)
 		m_co2.MBBRC = MFX_CODINGOPTION_ON;
+	if (pParams->bROI)
+		enable_roi = true;
+	else
+		enable_roi = false;
 	if (pParams->nRateControl == MFX_RATECONTROL_LA_ICQ ||
 		pParams->nRateControl == MFX_RATECONTROL_LA)
 		m_co2.LookAheadDepth = pParams->nLADEPTH;
@@ -644,7 +648,7 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 		pthread_mutex_lock(&cnn_mutex);
 #endif
 		memset(&m_ctrl, 0, sizeof(mfxEncodeCtrl));
-		if (rects_no_rotate.size() > 0)
+		if (enable_roi && (rects_no_rotate.size() > 0))
 		{
 			do_log(LOG_WARNING, "Encode frame=%d, x=%d, y=%d", frame_num, rects_no_rotate[0].x, rects_no_rotate[0].y);
 			memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));

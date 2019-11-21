@@ -57,6 +57,7 @@ public:
 #define NEW_TEXT 1
 
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex);
+extern bool enable_roi;
 extern Cnn_input cnn_in;
 extern std::vector<cv::Rect> rects_no_rotate;
 extern int frame_num;

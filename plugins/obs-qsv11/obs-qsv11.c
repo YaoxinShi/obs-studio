@@ -162,6 +162,7 @@ static void obs_qsv_defaults(obs_data_t *settings)
     obs_data_set_default_int(settings, "bframes", 3);
 	obs_data_set_default_bool(settings, "mbbrc", false);
 	obs_data_set_default_bool(settings, "ffmode", false);
+	obs_data_set_default_bool(settings, "roi", true);
 }
 
 static inline void add_strings(obs_property_t *list, const char *const *strings)
@@ -329,6 +330,7 @@ static obs_properties_t *obs_qsv_props(void *unused)
 		checkbox = obs_properties_add_bool(props, "ffmode", TEXT_FF_MODE);
 		obs_property_set_modified_callback(checkbox, ffmode_toggled);
 	}
+	obs_properties_add_bool(props, "roi", "Enable ROI detecting and encoding");
 
 	return props;
 }
@@ -424,6 +426,7 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	obsqsv->params.nICQQuality = (mfxU16)icq_quality;
 	obsqsv->params.bMBBRC = mbbrc;
 	obsqsv->params.bFFMode = ffmode;
+	obsqsv->params.bROI = obs_data_get_bool(settings, "roi");
 
 	info("settings:\n\trate_control:   %s", rate_control);
 

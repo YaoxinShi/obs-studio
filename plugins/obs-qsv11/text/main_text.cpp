@@ -135,6 +135,7 @@ Cnn_input cnn_in;
 std::vector<cv::Rect> rects_no_rotate;
 // unique frame index
 int frame_num = 0;
+bool enable_roi = true;
 // cnn state
 //--------------------------------------------------
 //  OBS thead		Encode thread		CNN init thread		CNN thread

@@ -120,6 +120,7 @@ typedef struct
 	mfxU16 nICQQuality;
 	bool   bMBBRC;
 	bool   bFFMode;
+	bool   bROI;
 } qsv_param_t;
 
 enum qsv_cpu_platform {
