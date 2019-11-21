@@ -15,7 +15,7 @@
 	blog(level, "[text detection: '%s'] " format, \
 			"aaa", ##__VA_ARGS__)
 
-#define disable_link_value 1
+#define disable_link_value 1 // need set to 0 for Dota2
 
 namespace {
 void softmax(std::vector<float>* data) {
