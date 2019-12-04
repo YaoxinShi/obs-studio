@@ -198,6 +198,48 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 
 	if (pDataY != NULL && pDataUV != NULL)
 	{
+		if (enable_roi && (gDemoMode != 0))
+		{
+			uint8_t* pFrom;
+			uint8_t* pTo;
+			int line;
+			int height = (pDataUV - pDataY) / strideY;
+
+			if (gDemoMode == 1) // left -half
+			{
+				pFrom = pDataY;
+				pTo = pDataY + strideY / 2;
+			}
+			else // right-half
+			{
+				pFrom = pDataY + strideY / 2;
+				pTo = pDataY;
+			}
+			for (line = 0; line < height; line++)
+			{
+				memcpy(pTo, pFrom, strideY / 2);
+				pFrom += strideY;
+				pTo += strideY;
+			}
+
+			if (gDemoMode == 1) // left -half
+			{
+				pFrom = pDataUV;
+				pTo = pDataUV + strideUV / 2;
+			}
+			else // right-half
+			{
+				pFrom = pDataUV + strideUV / 2;
+				pTo = pDataUV;
+			}
+			for (line = 0; line < height / 2; line++)
+			{
+				memcpy(pTo, pFrom, strideUV / 2);
+				pFrom += strideUV;
+				pTo += strideUV;
+			}
+		}
+
 		//if (frame_num % 60 == 0)
 		{
 #if MULTI_THREAD

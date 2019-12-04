@@ -121,6 +121,7 @@ typedef struct
 	bool   bMBBRC;
 	bool   bFFMode;
 	bool   bROI;
+	mfxU16 nDemoMode;
 } qsv_param_t;
 
 enum qsv_cpu_platform {

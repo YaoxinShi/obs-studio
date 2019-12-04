@@ -163,6 +163,7 @@ static void obs_qsv_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "mbbrc", false);
 	obs_data_set_default_bool(settings, "ffmode", false);
 	obs_data_set_default_bool(settings, "roi", true);
+	obs_data_set_default_string(settings, "demo_mode", "full");
 }
 
 static inline void add_strings(obs_property_t *list, const char *const *strings)
@@ -192,6 +193,14 @@ static inline bool is_skl_or_greater_platform()
 {
 	enum qsv_cpu_platform plat = qsv_get_cpu_platform();
 	return (plat >= QSV_CPU_PLATFORM_SKL);
+}
+
+static bool roi_toggled(obs_properties_t* ppts, obs_property_t* p, obs_data_t* settings)
+{
+	const bool roi = (bool)obs_data_get_bool(settings, "roi");
+	p = obs_properties_get(ppts, "demo_mode");
+	obs_property_set_enabled(p, roi);
+	return true;
 }
 
 static bool ffmode_toggled(obs_properties_t *ppts, obs_property_t *p, obs_data_t *settings)
@@ -330,7 +339,14 @@ static obs_properties_t *obs_qsv_props(void *unused)
 		checkbox = obs_properties_add_bool(props, "ffmode", TEXT_FF_MODE);
 		obs_property_set_modified_callback(checkbox, ffmode_toggled);
 	}
-	obs_properties_add_bool(props, "roi", "Enable ROI detecting and encoding");
+	checkbox = obs_properties_add_bool(props, "roi", "Enable ROI detecting and encoding");
+	obs_property_set_modified_callback(checkbox, roi_toggled);
+
+	list = obs_properties_add_list(props, "demo_mode", "Demo mode",
+		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	obs_property_list_add_string(list, "full", "full");
+	obs_property_list_add_string(list, "left-half", "left-half");
+	obs_property_list_add_string(list, "right-half", "right-half");
 
 	return props;
 }
@@ -427,6 +443,14 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	obsqsv->params.bMBBRC = mbbrc;
 	obsqsv->params.bFFMode = ffmode;
 	obsqsv->params.bROI = obs_data_get_bool(settings, "roi");
+
+	const char *demo_mode = obs_data_get_string(settings, "demo_mode");
+	if (astrcmpi(demo_mode, "full") == 0)
+		obsqsv->params.nDemoMode = 0;
+	else if (astrcmpi(demo_mode, "left-half") == 0)
+		obsqsv->params.nDemoMode = 1;
+	else if (astrcmpi(demo_mode, "right-half") == 0)
+		obsqsv->params.nDemoMode = 2;
 
 	info("settings:\n\trate_control:   %s", rate_control);
 

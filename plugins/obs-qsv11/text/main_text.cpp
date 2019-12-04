@@ -136,6 +136,7 @@ std::vector<cv::Rect> rects_no_rotate;
 // unique frame index
 int frame_num = 0;
 bool enable_roi = true;
+int gDemoMode = 0;
 // cnn state
 //--------------------------------------------------
 //  OBS thead		Encode thread		CNN init thread		CNN thread
@@ -424,7 +425,21 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 		{
 			if (!res.empty() || !text_recognition.is_initialized()) {
 				for (size_t i = 0; i < points.size(); i++) {
-					cv::line(demo_image, points[i], points[(i + 1) % points.size()], cv::Scalar(50, 205, 50), 2);
+					if (gDemoMode == 0)
+					{
+						cv::line(demo_image, points[i], points[(i + 1) % points.size()], cv::Scalar(50, 205, 50), 2);
+					}
+					else
+					{
+						if (points[i].x < width / 2) // in side-by-side mode, left part skip ROI encoding
+						{
+							cv::line(demo_image, points[i], points[(i + 1) % points.size()], cv::Scalar(50, 50, 205), 2);
+						}
+						else
+						{
+							cv::line(demo_image, points[i], points[(i + 1) % points.size()], cv::Scalar(50, 205, 50), 2);
+						}
+					}
 				}
 
 				if (!points.empty() && !res.empty()) {
