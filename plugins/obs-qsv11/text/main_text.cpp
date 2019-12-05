@@ -84,7 +84,7 @@ cv::Rect combine_two_rect(const cv::Rect r1, const cv::Rect r2)
     return cv::Rect(left, top, right-left, bottom-top);
 }
 
-void merge_rect(std::vector<cv::Rect>& rects)
+void merge_rect(std::vector<cv::Rect>& rects, int width)
 {
     //check size
     if (rects.size() == 0)
@@ -93,10 +93,17 @@ void merge_rect(std::vector<cv::Rect>& rects)
     //merge
     int index = 0;
     cv::Rect rect, rect2;
-    while (index < rects.size() - 1)
+    while (index < rects.size())
     {
     L_start:
         rect = rects.at(index);
+	//do_log(LOG_WARNING, "checking... rect.x=%d, rect.y=%d, width=%d, index=%d, size=%d", rect.x, rect.y, width, index, rects.size());
+	if ((gDemoMode != 0) && (rect.x < width/2))
+	{
+		rects.erase(rects.begin() + index);
+		do_log(LOG_WARNING, "kill left and corss-middle rect for demo purpose");
+		continue;
+	}
         for (int j = index + 1; j < rects.size(); j++)
         {
             rect2 = rects.at(j);
@@ -329,7 +336,8 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             }
 
             draw_begin = std::chrono::steady_clock::now();
-            do_log(LOG_WARNING, "num found=%d", rects.size());
+	    int original_found = rects.size();
+            do_log(LOG_WARNING, "original found=%d", original_found);
 	    int max_rect_num = 50;
             if (static_cast<int>(rects.size()) > max_rect_num) {
                 std::sort(rects.begin(), rects.end(), [](const cv::RotatedRect & a, const cv::RotatedRect & b) {
@@ -347,9 +355,18 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             for (const auto &rect : rects) {
                 rects_no_rotate.emplace_back(rect.boundingRect());
             }
+	    /*for (int i = 0; i < rects_no_rotate.size(); i++)
+	    {
+		    do_log(LOG_WARNING, "original rect, rect.x=%d, rect.y=%d", rects_no_rotate.at(i).x, rects_no_rotate.at(i).y);
+	    }*/
             //cv::groupRectangles(rects_no_rotate, 1, 2);
-            merge_rect(rects_no_rotate);
+            merge_rect(rects_no_rotate, width);
             int num_found = static_cast<int>(rects_no_rotate.size());
+	    do_log(LOG_WARNING, "num after merge=%d", num_found);
+	    /*for (int i = 0; i < rects_no_rotate.size(); i++)
+	    {
+		    do_log(LOG_WARNING, "merged rect, rect.x=%d, rect.y=%d", rects_no_rotate.at(i).x, rects_no_rotate.at(i).y);
+	    }*/
 		if (cnn_mutex != NULL)
 		{
 			pthread_mutex_unlock(cnn_mutex);
@@ -411,7 +428,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 
                 if (1) {
                     for (size_t i = 0; i < points.size(); i++) {
-			    do_log(LOG_WARNING, "%d,%d",
+			    do_log(LOG_WARNING, "drawing rect, 4-points: %d,%d",
 				    clip(static_cast<int>(points[i].x), image.cols - 1),
 				    clip(static_cast<int>(points[i].y), image.rows - 1));
                     }
@@ -433,6 +450,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 					{
 						if (points[i].x < width / 2) // in side-by-side mode, left part skip ROI encoding
 						{
+							//should not enter here, the left-side and cross-middle rect has been killed in merge_rect()
 							cv::line(demo_image, points[i], points[(i + 1) % points.size()], cv::Scalar(50, 50, 205), 2);
 						}
 						else
@@ -472,7 +490,8 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 			", draw(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count()) + 
 			", fps: " + std::to_string(fps) + \
 			", found: " + std::to_string(num_found) + \
-			", frame: " + std::to_string(fn),
+			"(" + std::to_string(original_found) + \
+			"), frame: " + std::to_string(fn),
                             cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
 		cv::namedWindow("Press any key to exit", cv::WINDOW_NORMAL);
 		cv::resizeWindow("Press any key to exit", 960, 540);

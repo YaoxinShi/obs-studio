@@ -665,15 +665,11 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 			m_ROI.ROIMode = MFX_ROI_MODE_QP_DELTA;
 			for (int i = 0; i < rects_no_rotate.size(); i++) {
 				cv::Rect rect = rects_no_rotate[i];
-				if ((gDemoMode == 0) ||
-				    ((gDemoMode != 0) && (rect.x > strideY / 2))) // in side-by-side mode, left part skip ROI encoding
-				{
-					m_ROI.ROI[i].Left = rect.x;
-					m_ROI.ROI[i].Top = rect.y;
-					m_ROI.ROI[i].Right = rect.x + rect.width;
-					m_ROI.ROI[i].Bottom = rect.y + rect.height;
-					m_ROI.ROI[i].DeltaQP = -6;
-				}
+				m_ROI.ROI[i].Left = rect.x;
+				m_ROI.ROI[i].Top = rect.y;
+				m_ROI.ROI[i].Right = rect.x + rect.width;
+				m_ROI.ROI[i].Bottom = rect.y + rect.height;
+				m_ROI.ROI[i].DeltaQP = -6;
 			}
 
 			static mfxExtBuffer * extendedBuffers;
