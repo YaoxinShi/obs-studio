@@ -373,7 +373,9 @@ static const char *stage_output_texture_name = "stage_output_texture";
 static inline void stage_output_texture(struct obs_core_video *video,
 		int cur_texture, int prev_texture)
 {
+	uint64_t start, end;
 	profile_start(stage_output_texture_name);
+	start = os_gettime_ns();
 
 	gs_texture_t   *texture;
 	bool        texture_ready;
@@ -397,6 +399,8 @@ static inline void stage_output_texture(struct obs_core_video *video,
 	video->textures_copied[cur_texture] = true;
 
 end:
+	end = os_gettime_ns();
+	blog(LOG_ERROR, "stage time = %d ns", end-start);
 	profile_end(stage_output_texture_name);
 }
 
