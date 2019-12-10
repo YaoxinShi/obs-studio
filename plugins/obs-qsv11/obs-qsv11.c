@@ -144,8 +144,8 @@ static void obs_qsv_destroy(void *data)
 static void obs_qsv_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_string(settings, "target_usage", "balanced");
-	obs_data_set_default_int(settings, "bitrate", 2500);
-	obs_data_set_default_int(settings, "max_bitrate", 3000);
+	obs_data_set_default_int(settings, "bitrate", 4500);
+	obs_data_set_default_int(settings, "max_bitrate", 6000);
 	obs_data_set_default_string(settings, "profile", "high");
 	obs_data_set_default_int(settings, "async_depth", 4);
 	obs_data_set_default_string(settings, "rate_control", "CBR");
