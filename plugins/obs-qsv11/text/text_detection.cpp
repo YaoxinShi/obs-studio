@@ -231,7 +231,7 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
 	}
 	return rects;
 #else
-#if NEW_TEXT
+#if (NEW_TEXT || DOTA_1213)
     const std::string kLocOutputName = "model/link_logits_/add";
     const std::string kClsOutputName = "model/segm_logits/add";
 #else

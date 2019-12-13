@@ -201,6 +201,8 @@ int cnn_init()
 #if NEW_TEXT
 		//std::string text_detection_model_path = ".\\detection_INT8.xml";
 		std::string text_detection_model_path = ".\\detection_FP16.xml";
+#elif DOTA_1213
+		std::string text_detection_model_path = ".\\detection_FP16_Dota_1213.xml";
 #else
 		std::string text_detection_model_path = ".\\text-detection-0004_FP16.xml";
 #endif
@@ -236,6 +238,9 @@ int cnn_init()
 #if NEW_TEXT
 			//text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(320, 192));
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(320, 192));
+#elif DOTA_1213
+			//1280x768 is OK, 640x384 is usable, 320x192 is not usable
+			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(1280, 768));
 #else
 			//text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(1280, 768));
@@ -294,8 +299,16 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
         std::string kAlphabet = std::string("0123456789abcdefghijklmnopqrstuvwxyz") + kPadSymbol;
 
         const double min_text_recognition_confidence = 0.2;
+#if NEW_TEXT
 	float cls_conf_threshold = static_cast<float>(0.5);
 	float link_conf_threshold = static_cast<float>(0.5);
+#elif DOTA_1213
+	float cls_conf_threshold = static_cast<float>(0.8);
+	float link_conf_threshold = static_cast<float>(0.8);
+#else
+	float cls_conf_threshold = static_cast<float>(0.8);
+	float link_conf_threshold = static_cast<float>(0.8);
+#endif
 
 #if USE_OBS_INPUT
 	cv::Mat image;
@@ -317,6 +330,10 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 	    do_log(LOG_WARNING, "-------------------------------------------------------");
             cv::Mat demo_image = image.clone();
             cv::Size orig_image_size = image.size();
+
+#if DOTA_1213
+	    image = 0.003922 * image; // div 255
+#endif
 
             std::chrono::steady_clock::time_point infer_begin, infer_end, pp_begin, pp_end, draw_begin, draw_end;
 
