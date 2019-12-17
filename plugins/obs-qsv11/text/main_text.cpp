@@ -332,8 +332,22 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             cv::Size orig_image_size = image.size();
 
 #if DOTA_1213
-	    image = 0.003922 * image; // div 255
+	    image.convertTo(image, CV_32F, 1.0 / 255, 0);
 #endif
+	/*int w, h, row, col;
+	float fr, fg, fb;
+        w = image.cols;
+	h = image.rows;
+	for (row = 0; row < 1; row++)
+	{
+		for (col = 0; col < 10; col++)
+		{
+			fr = image.at<cv::Vec3f>(col, row)[0];
+			fg = image.at<cv::Vec3f>(col, row)[1];
+			fb = image.at<cv::Vec3f>(col, row)[2];
+			do_log(LOG_WARNING, "[%d][%d]=%f,%f,%f", row, col, fr, fg, fb);
+		}
+	}*/
 
             std::chrono::steady_clock::time_point infer_begin, infer_end, pp_begin, pp_end, draw_begin, draw_end;
 
