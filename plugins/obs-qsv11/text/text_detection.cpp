@@ -15,7 +15,11 @@
 	blog(level, "[text detection: '%s'] " format, \
 			"aaa", ##__VA_ARGS__)
 
-#define disable_link_value 0 // need set to 0 for Dota2
+#if DOTA_1213
+    #define disable_link_value 1
+#else
+    #define disable_link_value 0
+#endif
 
 namespace {
 void softmax(std::vector<float>* data) {
@@ -238,8 +242,17 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
     const std::string kLocOutputName = "pixel_link/add_2";
     const std::string kClsOutputName = "pixel_cls/add_2";
 #endif
+
+#if NEW_TEXT
     const int kMinArea = 300/4;
     const int kMinHeight = 10/2;
+#elif DOTA_1213
+    const int kMinArea = 300*4;
+    const int kMinHeight = 10*2;
+#else
+    const int kMinArea = 300;
+    const int kMinHeight = 10;
+#endif
 
     auto link_shape = blobs.at(kLocOutputName)->getTensorDesc().getDims();
     size_t link_data_size = link_shape[0] * link_shape[1] * link_shape[2] * link_shape[3];
