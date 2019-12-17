@@ -28,6 +28,7 @@
 	blog(level, "[text detection: '%s'] " format, \
 			"aaa", ##__VA_ARGS__)
 
+#define DISABLE_RECOGNIZE 1 // skip the recognization code to improve the performance
 #define DISABLE_ROTATE_RECT 1
 #define SHOW_CV_OUTPUT_IMAGE 1
 #define USE_OBS_INPUT 1
@@ -429,10 +430,12 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 #else
                     points = floatPointsFromRotatedRect(rect);
 #endif
+#if ! DISABLE_RECOGNIZE
                     topLeftPoint(points, &top_left_point_idx);
                     cropped_text = cropImage(image, points, text_recognition.input_size(), top_left_point_idx);
                     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
                     text_crop_time += std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+#endif
                 } else {
                     cropped_text = image;
                 }
@@ -491,9 +494,11 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 					}
 				}
 
+#if ! DISABLE_RECOGNIZE
 				if (!points.empty() && !res.empty()) {
 					setLabel(demo_image, res, points[top_left_point_idx]);
 				}
+#endif
 			}
 		}
             }
