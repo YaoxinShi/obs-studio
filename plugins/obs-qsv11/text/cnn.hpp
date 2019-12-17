@@ -54,7 +54,7 @@ public:
 
 #define MULTI_THREAD 1
 #define SSD_TEXT 0
-#define NEW_TEXT 0
+#define FORZA_1115 0
 #define DOTA_1213 1
 
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex);

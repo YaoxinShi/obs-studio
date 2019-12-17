@@ -199,7 +199,7 @@ int cnn_init()
 #if SSD_TEXT
 		std::string text_detection_model_path = ".\\VGG_scenetext_SSD_300x300_iter_60000.xml";
 #else
-#if NEW_TEXT
+#if FORZA_1115
 		//std::string text_detection_model_path = ".\\detection_INT8.xml";
 		std::string text_detection_model_path = ".\\detection_FP16.xml";
 #elif DOTA_1213
@@ -236,7 +236,7 @@ int cnn_init()
 			//text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(300, 300));
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(300, 300));
 #else
-#if NEW_TEXT
+#if FORZA_1115
 			//text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(320, 192));
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(320, 192));
 #elif DOTA_1213
@@ -300,7 +300,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
         std::string kAlphabet = std::string("0123456789abcdefghijklmnopqrstuvwxyz") + kPadSymbol;
 
         const double min_text_recognition_confidence = 0.2;
-#if NEW_TEXT
+#if FORZA_1115
 	float cls_conf_threshold = static_cast<float>(0.5);
 	float link_conf_threshold = static_cast<float>(0.5);
 #elif DOTA_1213

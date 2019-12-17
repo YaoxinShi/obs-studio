@@ -235,7 +235,7 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
 	}
 	return rects;
 #else
-#if (NEW_TEXT || DOTA_1213)
+#if (FORZA_1115 || DOTA_1213)
     const std::string kLocOutputName = "model/link_logits_/add";
     const std::string kClsOutputName = "model/segm_logits/add";
 #else
@@ -243,7 +243,7 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
     const std::string kClsOutputName = "pixel_cls/add_2";
 #endif
 
-#if NEW_TEXT
+#if FORZA_1115
     const int kMinArea = 300/4;
     const int kMinHeight = 10/2;
 #elif DOTA_1213
