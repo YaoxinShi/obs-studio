@@ -99,8 +99,9 @@ void merge_rect(std::vector<cv::Rect>& rects, int width)
     L_start:
         rect = rects.at(index);
 	//do_log(LOG_WARNING, "checking... rect.x=%d, rect.y=%d, width=%d, index=%d, size=%d", rect.x, rect.y, width, index, rects.size());
-	if ((gDemoMode != 0) && (rect.x < width/2))
+	if ((gDemoMode != 0) && (rect.x > width/2))
 	{
+		//should not enter here, the inference image is cropped
 		rects.erase(rects.begin() + index);
 		do_log(LOG_WARNING, "kill left and corss-middle rect for demo purpose");
 		continue;
@@ -342,7 +343,12 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 #endif
 	    do_log(LOG_WARNING, "-------------------------------------------------------");
             cv::Mat demo_image = image.clone();
-            cv::Size orig_image_size = image.size();
+            cv::Size inference_image_size = image.size();
+	    if (gDemoMode != 0)
+	    {
+		    inference_image_size.width /= 2;
+	    }
+	    cv::Mat inference_image = image(cv::Rect(0, 0, inference_image_size.width, inference_image_size.height));
 
 #if DOTA_1213
 	    image.convertTo(image, CV_32F, 1.0 / 255, 0);
@@ -370,11 +376,11 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             std::vector<cv::RotatedRect> rects;
             if (text_detection.is_initialized()) {
                 infer_begin = std::chrono::steady_clock::now();
-                auto blobs = text_detection.Infer(image);
+                auto blobs = text_detection.Infer(inference_image);
                 infer_end = std::chrono::steady_clock::now();
 
                 pp_begin = std::chrono::steady_clock::now();
-                rects = postProcess(blobs, orig_image_size, cls_conf_threshold, link_conf_threshold);
+                rects = postProcess(blobs, inference_image_size, cls_conf_threshold, link_conf_threshold);
                 pp_end = std::chrono::steady_clock::now();
                 text_detection_postproc_time += std::chrono::duration_cast<std::chrono::milliseconds>(pp_end - pp_begin).count();
             } else {
@@ -496,9 +502,9 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 					}
 					else
 					{
-						if (points[i].x < width / 2) // in side-by-side mode, left part skip ROI encoding
+						if (points[i].x > width / 2) // in side-by-side mode, right part skip ROI encoding
 						{
-							//should not enter here, the left-side and cross-middle rect has been killed in merge_rect()
+							//should not enter here, the inference image is cropped
 							cv::line(demo_image, points[i], points[(i + 1) % points.size()], cv::Scalar(50, 50, 205), 2);
 						}
 						else
