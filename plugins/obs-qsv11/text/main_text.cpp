@@ -99,13 +99,13 @@ void merge_rect(std::vector<cv::Rect>& rects, int width)
     L_start:
         rect = rects.at(index);
 	//do_log(LOG_WARNING, "checking... rect.x=%d, rect.y=%d, width=%d, index=%d, size=%d", rect.x, rect.y, width, index, rects.size());
-	if ((gDemoMode != 0) && (rect.x > width/2))
+	/*if ((gDemoMode != 0) && (rect.x > width/2))
 	{
 		//should not enter here, the inference image is cropped
 		rects.erase(rects.begin() + index);
 		do_log(LOG_WARNING, "kill left and corss-middle rect for demo purpose");
 		continue;
-	}
+	}*/
         for (int j = index + 1; j < rects.size(); j++)
         {
             rect2 = rects.at(j);
@@ -502,12 +502,12 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 					}
 					else
 					{
-						if (points[i].x > width / 2) // in side-by-side mode, right part skip ROI encoding
+						/*if (points[i].x > width / 2) // in side-by-side mode, right part skip ROI encoding
 						{
 							//should not enter here, the inference image is cropped
 							cv::line(demo_image, points[i], points[(i + 1) % points.size()], cv::Scalar(50, 50, 205), 2);
 						}
-						else
+						else*/
 						{
 							cv::line(demo_image, points[i], points[(i + 1) % points.size()], cv::Scalar(50, 205, 50), 2);
 						}
