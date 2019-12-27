@@ -210,6 +210,8 @@ int cnn_init()
 		std::string text_detection_model_path = ".\\detection_FP16_Dota_1213.xml";
 #elif DOTA_1225
 		std::string text_detection_model_path = ".\\detection_FP16_Dota_1225.xml";
+#elif FORZA_1227
+		std::string text_detection_model_path = ".\\text-detection-0004_FP16.xml";
 #else
 		std::string text_detection_model_path = ".\\text-detection-0004_FP16.xml";
 #endif
@@ -250,6 +252,8 @@ int cnn_init()
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(1280, 768));
 #elif DOTA_1225
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(512, 512));
+#elif FORZA_1227
+			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(960, 576));
 #else
 			//text_detection.Init(text_detection_model_path, &plugins_for_devices[devices[0]], cv::Size(1280, 768));
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(1280, 768));
@@ -311,7 +315,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 #if FORZA_1115
 	float cls_conf_threshold = static_cast<float>(0.5);
 	float link_conf_threshold = static_cast<float>(0.5);
-#elif DOTA_1213 || DOTA_1225
+#elif DOTA_1213 || DOTA_1225 || FORZA_1227
 	float cls_conf_threshold = static_cast<float>(0.8);
 	float link_conf_threshold = static_cast<float>(0.8);
 #else
