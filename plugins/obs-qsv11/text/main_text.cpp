@@ -351,9 +351,9 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 	    cv::Mat inference_image = image(cv::Rect(0, 0, inference_image_size.width, inference_image_size.height));
 
 #if DOTA_1213
-	    image.convertTo(image, CV_32F, 1.0 / 255, 0);
+	    inference_image.convertTo(inference_image, CV_32F, 1.0 / 255, 0);
 #elif DOTA_1225
-	    image.convertTo(image, CV_32F, 1.0 / 127.5, -1.0);
+	    inference_image.convertTo(inference_image, CV_32F, 1.0 / 127.5, -1.0);
 #endif
 	/*int w, h, row, col;
 	float fr, fg, fb;
