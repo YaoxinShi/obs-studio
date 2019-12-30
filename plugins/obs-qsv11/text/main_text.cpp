@@ -203,7 +203,7 @@ int cnn_init()
 		//https://github.com/opencv/openvino_training_extensions/blob/develop/tensorflow_toolkit/text_detection/text_detection/model.py#L198
 		// detection_FP16.xml -> mobilenet_v2_ext
 		// detection_FP16_Dota_1213.xml -> ka_mobilenet_v2_1_0, keras_applications_mobilenetv2 with alpha = 1.0
-		// detection_FP16_Dota_1225.xml -> keras_applications_mobilenetv2 with alpha = 0.3
+		// detection_FP16_Dota_1225.xml, detection_FP16_Forza_1231.xml -> keras_applications_mobilenetv2 with alpha = 0.3
 #if FORZA_1115
 		//std::string text_detection_model_path = ".\\detection_INT8.xml";
 		std::string text_detection_model_path = ".\\detection_FP16.xml";
@@ -213,6 +213,8 @@ int cnn_init()
 		std::string text_detection_model_path = ".\\detection_FP16_Dota_1225.xml";
 #elif FORZA_1227
 		std::string text_detection_model_path = ".\\text-detection-0004_FP16.xml";
+#elif FORZA_1231
+		std::string text_detection_model_path = ".\\detection_FP16_Forza_1231.xml";
 #else
 		std::string text_detection_model_path = ".\\text-detection-0004_FP16.xml";
 #endif
@@ -251,7 +253,7 @@ int cnn_init()
 #elif DOTA_1213
 			//1280x768 is OK, 640x384 is usable, 320x192 is not usable
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(1280, 768));
-#elif DOTA_1225
+#elif DOTA_1225 || FORZA_1231
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(512, 512));
 #elif FORZA_1227
 			text_detection.Init(text_detection_model_path, ie, "GPU", cv::Size(960, 576));
@@ -316,7 +318,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 #if FORZA_1115
 	float cls_conf_threshold = static_cast<float>(0.5);
 	float link_conf_threshold = static_cast<float>(0.5);
-#elif DOTA_1213 || DOTA_1225 || FORZA_1227
+#elif DOTA_1213 || DOTA_1225 || FORZA_1227 || FORZA_1231
 	float cls_conf_threshold = static_cast<float>(0.8);
 	float link_conf_threshold = static_cast<float>(0.8);
 #else
@@ -352,7 +354,7 @@ int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 
 #if DOTA_1213
 	    inference_image.convertTo(inference_image, CV_32F, 1.0 / 255, 0);
-#elif DOTA_1225
+#elif DOTA_1225 || FORZA_1231
 	    inference_image.convertTo(inference_image, CV_32F, 1.0 / 127.5, -1.0);
 #endif
 	/*int w, h, row, col;

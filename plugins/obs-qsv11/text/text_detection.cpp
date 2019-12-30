@@ -15,7 +15,7 @@
 	blog(level, "[text detection: '%s'] " format, \
 			"aaa", ##__VA_ARGS__)
 
-#if DOTA_1213 || DOTA_1225 || FORZA_1227
+#if DOTA_1213 || DOTA_1225 || FORZA_1227 || FORZA_1231
     #define disable_link_value 1
 #else
     #define disable_link_value 0
@@ -235,7 +235,7 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
 	}
 	return rects;
 #else
-#if (FORZA_1115 || DOTA_1213 || DOTA_1225)
+#if (FORZA_1115 || DOTA_1213 || DOTA_1225 || FORZA_1231)
     const std::string kLocOutputName = "model/link_logits_/add";
     const std::string kClsOutputName = "model/segm_logits/add";
 #elif FORZA_1227
@@ -249,7 +249,7 @@ std::vector<cv::RotatedRect> postProcess(const InferenceEngine::BlobMap &blobs, 
 #if FORZA_1115
     const int kMinArea = 300/4;
     const int kMinHeight = 10/2;
-#elif DOTA_1213 || DOTA_1225 || FORZA_1227
+#elif DOTA_1213 || DOTA_1225 || FORZA_1227 || FORZA_1231
     const int kMinArea = 300*4;
     const int kMinHeight = 10*2;
 #else
