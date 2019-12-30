@@ -121,9 +121,9 @@ target_link_libraries(obs-qsv11
 	${obs-qsv11_PLATFORM_DEPS}
 	${OpenCV_LIBS}
     debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engined.lib
-    debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/tbb_debug.lib
+    debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/external/tbb/lib/tbb_debug.lib
     optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine.lib
-	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/tbb.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/external/tbb/lib/tbb.lib
 	)
 
 target_compile_definitions(obs-qsv11 PRIVATE DX11_D3D)
