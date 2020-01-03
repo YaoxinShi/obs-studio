@@ -428,6 +428,9 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 
 	struct obs_tex_frame tf;
 	circlebuf_pop_front(&video->gpu_encoder_avail_queue, &tf, sizeof(tf));
+#if DEBUG_TEX
+	blog(LOG_ERROR, "aaa obs: get a free slot from gpu_encoder_avail_queue %p", tf.tex);
+#endif
 
 	if (tf.released) {
 		gs_texture_acquire_sync(tf.tex, tf.lock_key, GS_WAIT_INFINITE);
@@ -439,13 +442,39 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 	 * reason.  otherwise, it goes to the 'duplicate' case above, which
 	 * will ensure better performance. */
 	if (raw_active || vframe_info->count > 1) {
+		if (video->gpu_conversion) // NV12 tex enc
+		{
 		gs_copy_texture(tf.tex, video->convert_textures[prev_texture]);
+		}
+		else
+		{
+			gs_copy_texture(tf.tex, video->output_textures[prev_texture]);
+#if DEBUG_TEX
+			blog(LOG_ERROR, "aaa obs: copy from output_textures[%d]=%p to free gpu_encoder_avail_queue slot %p", prev_texture, video->output_textures[prev_texture], tf.tex);
+#endif
+		}
+
 	} else {
-		gs_texture_t *tex = video->convert_textures[prev_texture];
-		gs_texture_t *tex_uv = video->convert_uv_textures[prev_texture];
+		gs_texture_t* tex;
+		gs_texture_t* tex_uv;
+		if (video->gpu_conversion) // NV12 tex enc
+		{
+			tex = video->convert_textures[prev_texture];
+			tex_uv = video->convert_uv_textures[prev_texture];
 
 		video->convert_textures[prev_texture] = tf.tex;
 		video->convert_uv_textures[prev_texture] = tf.tex_uv;
+		}
+		else
+		{
+			tex = video->output_textures[prev_texture];
+			tex_uv = video->output_textures[prev_texture];
+			video->output_textures[prev_texture] = tf.tex;
+			video->output_textures[prev_texture] = tf.tex_uv;
+#if DEBUG_TEX
+			blog(LOG_ERROR, "aaa obs: output_textures[%d] switch from %p to %p", prev_texture, tex, tf.tex);
+#endif
+		}
 
 		tf.tex = tex;
 		tf.tex_uv = tex_uv;
@@ -456,6 +485,9 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 	tf.released = true;
 	tf.handle = gs_texture_get_shared_handle(tf.tex);
 	gs_texture_release_sync(tf.tex, ++tf.lock_key);
+#if DEBUG_TEX
+	blog(LOG_ERROR, "aaa obs: send %p to encoder, handle=%p", tf.tex, tf.handle);
+#endif
 	circlebuf_push_back(&video->gpu_encoder_queue, &tf, sizeof(tf));
 
 	os_sem_post(video->gpu_encode_semaphore);
@@ -478,7 +510,9 @@ static void output_gpu_encoders(struct obs_core_video *video, bool raw_active,
 {
 	profile_start(output_gpu_encoders_name);
 
-	if (!video->textures_converted[prev_texture])
+	bool texture_ready = (video->gpu_conversion) ? video->textures_converted[prev_texture]
+		: video->textures_output[prev_texture];
+	if (!texture_ready)
 		goto end;
 	if (!video->vframe_info_buffer_gpu.size)
 		goto end;
@@ -509,7 +543,9 @@ static inline void render_video(struct obs_core_video *video,
 
 	if (raw_active || gpu_active) {
 		render_output_texture(video, cur_texture, prev_texture);
-
+#if DEBUG_TEX
+		blog(LOG_ERROR, "aaa obs: render to output texture[%d]=%p", cur_texture, video->output_textures[cur_texture]);
+#endif
 #ifdef _WIN32
 		if (gpu_active) {
 			gs_flush();

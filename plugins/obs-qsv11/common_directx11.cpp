@@ -9,6 +9,7 @@ Copyright(c) 2005-2014 Intel Corporation. All Rights Reserved.
 *****************************************************************************/
 
 #include "common_directx11.h"
+#include <obs-module.h> // for blog
 
 #include<map>
 
@@ -90,7 +91,9 @@ mfxStatus CreateHWDevice(mfxSession session, mfxHDL* deviceHandle, HWND hWnd, bo
         return MFX_ERR_DEVICE_FAILED;
 
     UINT dxFlags = 0;
-    //UINT dxFlags = D3D11_CREATE_DEVICE_DEBUG;
+#if DEBUG_TEX
+    dxFlags = D3D11_CREATE_DEVICE_DEBUG; //Need Direct3D debug layer: Settings -> Apps -> Apps & features -> Manage optional features -> Add a feature -> Select "Graphics Tools"
+#endif
 
     hres =  D3D11CreateDevice(  g_pAdapter,
                                 D3D_DRIVER_TYPE_UNKNOWN,
@@ -179,7 +182,7 @@ mfxStatus _simple_alloc(mfxFrameAllocRequest* request, mfxFrameAllocResponse* re
     if (MFX_FOURCC_NV12 == request->Info.FourCC)
         format = DXGI_FORMAT_NV12;
     else if (MFX_FOURCC_RGB4 == request->Info.FourCC)
-        format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        format = DXGI_FORMAT_R8G8B8A8_UNORM;
     else if (MFX_FOURCC_YUY2== request->Info.FourCC)
         format = DXGI_FORMAT_YUY2;
     else if (MFX_FOURCC_P8 == request->Info.FourCC ) //|| MFX_FOURCC_P8_TEXTURE == request->Info.FourCC
@@ -241,7 +244,7 @@ mfxStatus _simple_alloc(mfxFrameAllocRequest* request, mfxFrameAllocResponse* re
         //desc.MiscFlags            = D3D11_RESOURCE_MISC_SHARED;
 
         if ( (MFX_MEMTYPE_FROM_VPPIN & request->Type) &&
-             (DXGI_FORMAT_B8G8R8A8_UNORM == desc.Format) ) {
+             (DXGI_FORMAT_R8G8B8A8_UNORM == desc.Format) ) {
             desc.BindFlags = D3D11_BIND_RENDER_TARGET;
             if (desc.ArraySize > 2)
                 return MFX_ERR_MEMORY_ALLOC;
@@ -372,7 +375,7 @@ mfxStatus simple_lock(mfxHDL pthis, mfxMemId mid, mfxFrameData* ptr)
         ptr->U = (mfxU8*)lockedRect.pData + desc.Height * lockedRect.RowPitch;
         ptr->V = ptr->U + 1;
         break;
-    case DXGI_FORMAT_B8G8R8A8_UNORM :
+    case DXGI_FORMAT_R8G8B8A8_UNORM:
         ptr->Pitch = (mfxU16)lockedRect.RowPitch;
         ptr->B = (mfxU8*)lockedRect.pData;
         ptr->G = ptr->B + 1;
@@ -455,6 +458,33 @@ mfxStatus simple_copytex(mfxHDL pthis, mfxMemId mid, mfxU32 tex_handle, mfxU64 l
     input_tex->GetDesc(&desc);
     D3D11_BOX SrcBox = { 0, 0, 0, desc.Width, desc.Height, 1 };
     g_pD3D11Ctx->CopySubresourceRegion(pSurface, 0, 0, 0, 0, input_tex, 0, &SrcBox);
+
+#if DEBUG_TEX
+    blog(LOG_ERROR, "aaa qsv: get shared texture handle %p", tex_handle);
+
+    ID3D11Texture2D* pStageSurface = (ID3D11Texture2D*)memId->memIdStage;
+    g_pD3D11Ctx->CopySubresourceRegion(pStageSurface, 0, 0, 0, 0, input_tex, 0, &SrcBox);
+
+    D3D11_TEXTURE2D_DESC desc2 = { 0 };
+    pStageSurface->GetDesc(&desc2);
+    blog(LOG_ERROR, "aaa qsv: src format=%d, size=%dx%d", desc.Format, desc.Width, desc.Height);
+    blog(LOG_ERROR, "aaa qsv: dst format=%d, size=%dx%d", desc2.Format, desc2.Width, desc2.Height);
+    D3D11_MAPPED_SUBRESOURCE    lockedRect = { 0 };
+    D3D11_MAP   mapType = D3D11_MAP_READ;
+    UINT        mapFlags = D3D11_MAP_FLAG_DO_NOT_WAIT;
+    uint16_t Pitch = 0;
+    uint8_t* Y = 0;
+    do {
+	    hr = g_pD3D11Ctx->Map((ID3D11Resource*)pStageSurface, 0, mapType, mapFlags, &lockedRect);
+	    if (S_OK != hr && DXGI_ERROR_WAS_STILL_DRAWING != hr)
+		    return MFX_ERR_LOCK_MEMORY;
+    } while (DXGI_ERROR_WAS_STILL_DRAWING == hr);
+    Pitch = (uint16_t)lockedRect.RowPitch;
+    Y = (uint8_t*)lockedRect.pData;
+    blog(LOG_INFO, "aaa qsv: simple_copytex, dump tex, handle=%x, [%d,%d,%d,%d], [%d,%d,%d,%d]", tex_handle,
+	    Y[0], Y[1], Y[2], Y[3], Y[4], Y[5], Y[6], Y[7]);
+    g_pD3D11Ctx->Unmap((ID3D11Resource*)pStageSurface, 0);
+#endif
 
     km->ReleaseSync(*next_key);
 
