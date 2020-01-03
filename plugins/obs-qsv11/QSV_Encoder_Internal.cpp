@@ -205,24 +205,8 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t * pParams)
 	m_mfxEncParams.mfx.CodecProfile = pParams->nCodecProfile;
 	m_mfxEncParams.mfx.FrameInfo.FrameRateExtN = pParams->nFpsNum;
 	m_mfxEncParams.mfx.FrameInfo.FrameRateExtD = pParams->nFpsDen;
-	if (pParams->bTexEnc)
-	{
-		if (pParams->bNV12)
-		{
-			m_mfxEncParams.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
-			m_mfxEncParams.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
-		}
-		else
-		{
-			m_mfxEncParams.mfx.FrameInfo.FourCC = MFX_FOURCC_RGB4;
-			m_mfxEncParams.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV444;
-		}
-	}
-	else
-	{
-		m_mfxEncParams.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
-		m_mfxEncParams.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
-	}
+	m_mfxEncParams.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
+	m_mfxEncParams.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
 	m_mfxEncParams.mfx.FrameInfo.PicStruct = MFX_PICSTRUCT_PROGRESSIVE;
 	m_mfxEncParams.mfx.FrameInfo.CropX = 0;
 	m_mfxEncParams.mfx.FrameInfo.CropY = 0;
@@ -319,7 +303,7 @@ mfxStatus QSV_Encoder_Internal::AllocateSurfaces()
 	mfxStatus sts = m_pmfxENC->QueryIOSurf(&m_mfxEncParams, &EncRequest);
 	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
-	EncRequest.Type |= WILL_WRITE | MFX_MEMTYPE_FROM_VPPIN;
+	EncRequest.Type |= WILL_WRITE;
 
 	// SNB hack. On some SNB, it seems to require more surfaces
 	EncRequest.NumFrameSuggested += m_mfxEncParams.AsyncDepth;

@@ -373,14 +373,6 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	obsqsv->params.nbFrames = (mfxU16)bFrames;
 	obsqsv->params.nKeyIntSec = (mfxU16)keyint_sec;
 	obsqsv->params.nICQQuality = (mfxU16)icq_quality;
-	if (voi->format == VIDEO_FORMAT_NV12)
-	{
-		obsqsv->params.bNV12 = true;
-	}
-	else
-	{
-		obsqsv->params.bNV12 = false;
-	}
 
 	info("settings:\n\trate_control:   %s", rate_control);
 
@@ -538,66 +530,6 @@ static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 	return obsqsv;
 }
 
-static void* obs_qsv_create_tex_internal(obs_data_t* settings, obs_encoder_t* encoder) //copy from obs_qsv_create, only add one line "obsqsv->params.bTexEnc = true;"
-{
-	InitializeCriticalSection(&g_QsvCs);
-
-	struct obs_qsv* obsqsv = bzalloc(sizeof(struct obs_qsv));
-	obsqsv->encoder = encoder;
-	obsqsv->params.bTexEnc = true;
-
-	if (update_settings(obsqsv, settings)) {
-		EnterCriticalSection(&g_QsvCs);
-		obsqsv->context = qsv_encoder_open(&obsqsv->params);
-		LeaveCriticalSection(&g_QsvCs);
-
-		if (obsqsv->context == NULL)
-			warn("qsv failed to load");
-		else
-			load_headers(obsqsv);
-	}
-	else {
-		warn("bad settings specified");
-	}
-
-	qsv_encoder_version(&g_verMajor, &g_verMinor);
-
-	blog(LOG_INFO, "\tmajor:          %d\n"
-		"\tminor:          %d",
-		g_verMajor, g_verMinor);
-
-	// MSDK 1.6 or less doesn't have automatic DTS calculation
-	// including early SandyBridge.
-	// Need to add manual DTS from PTS.
-	if (g_verMajor == 1 && g_verMinor < 7) {
-		int64_t interval = obsqsv->params.nbFrames + 1;
-		int64_t GopPicSize = (int64_t)(obsqsv->params.nKeyIntSec *
-			obsqsv->params.nFpsNum /
-			(float)obsqsv->params.nFpsDen);
-		g_pts2dtsShift = GopPicSize - (GopPicSize / interval) *
-			interval;
-
-		blog(LOG_INFO, "\tinterval:       %d\n"
-			"\tGopPictSize:    %d\n"
-			"\tg_pts2dtsShift: %d",
-			interval, GopPicSize, g_pts2dtsShift);
-	}
-	else
-		g_pts2dtsShift = -1;
-
-	if (!obsqsv->context) {
-		bfree(obsqsv);
-		return NULL;
-	}
-
-	obsqsv->performance_token =
-		os_request_high_performance("qsv encoding");
-
-	g_bFirst = true;
-
-	return obsqsv;
-}
-
 static HANDLE get_lib(const char *lib)
 {
 	HMODULE mod = GetModuleHandleA(lib);
@@ -669,9 +601,9 @@ static void *obs_qsv_create_tex(obs_data_t *settings, obs_encoder_t *encoder)
 		return obs_encoder_create_rerouted(encoder, "obs_qsv11");
 	}
 
-	if (1/*obs_nv12_tex_active()*/) { // don't check "obs_nv12_tex_active", so RGBA can also use tex-enc
+	if (obs_nv12_tex_active()) {
 		blog(LOG_INFO, ">>> new qsv encoder");
-		return obs_qsv_create_tex_internal(settings, encoder);;
+		return obs_qsv_create(settings, encoder);
 	} else {
 		blog(LOG_INFO, ">>> nv12 tex not active, fall back to old qsv encoder");
 		return obs_encoder_create_rerouted(encoder, "obs_qsv11");
@@ -744,13 +676,6 @@ static void obs_qsv_video_info(void *data, struct video_scale_info *info)
 			info->format : VIDEO_FORMAT_NV12;
 	}
 
-	if (obsqsv->params.bTexEnc)
-	{
-		if (info->format == VIDEO_FORMAT_RGBA)
-			pref_format = VIDEO_FORMAT_RGBA;
-		else // all other cases use NV12 format
-			pref_format = VIDEO_FORMAT_NV12;
-	}
 	info->format = pref_format;
 	cap_resolution(obsqsv->encoder, info);
 }

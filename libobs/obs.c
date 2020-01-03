@@ -196,7 +196,7 @@ static bool obs_init_gpu_conversion(struct obs_video_info *ovi)
 			video->convert_textures[i] = gs_texture_create(
 					ovi->output_width,
 					video->conversion_height,
-					GS_RGBA, 1, NULL, GS_RENDER_TARGET | GS_SHARED_KM_TEX);
+					GS_RGBA, 1, NULL, GS_RENDER_TARGET);
 #ifdef _WIN32
 		}
 #endif
@@ -243,10 +243,7 @@ static bool obs_init_textures(struct obs_video_info *ovi)
 
 		video->output_textures[i] = gs_texture_create(
 				ovi->output_width, ovi->output_height,
-				GS_RGBA, 1, NULL, GS_RENDER_TARGET | GS_SHARED_KM_TEX);
-#if DEBUG_TEX
-		blog(LOG_ERROR, "aaa obs: create output texture[%d]=%p", i, video->output_textures[i]);
-#endif
+				GS_RGBA, 1, NULL, GS_RENDER_TARGET);
 
 		if (!video->output_textures[i])
 			return false;

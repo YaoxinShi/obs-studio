@@ -36,8 +36,6 @@
 #include "obs-properties.h"
 #include "obs-interaction.h"
 
-#define DEBUG_TEX 0
-
 struct matrix4;
 
 /* opaque types */
