@@ -248,6 +248,7 @@ struct obs_core_video {
 	bool                            textures_output[NUM_TEXTURES];
 	bool                            textures_copied[NUM_TEXTURES];
 	bool                            textures_converted[NUM_TEXTURES];
+	bool				choosing_nv12_tex;
 	bool                            using_nv12_tex;
 	struct circlebuf                vframe_info_buffer;
 	struct circlebuf                vframe_info_buffer_gpu;
