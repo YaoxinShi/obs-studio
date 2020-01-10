@@ -795,7 +795,6 @@ struct gs_device {
 	ComPtr<ID3D11DeviceContext> context;
 	uint32_t                    adpIdx = 0;
 	bool                        nv12Supported = false;
-	bool                        nv12Preferred = false;
 
 	gs_texture_2d               *curRenderTarget = nullptr;
 	gs_zstencil_buffer          *curZStencilBuffer = nullptr;

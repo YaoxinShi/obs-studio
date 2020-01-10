@@ -381,7 +381,11 @@ void gs_device::InitDevice(uint32_t adapterIdx)
 	/* check for nv12 texture output support    */
 
 	nv12Supported = false;
-	nv12Preferred = false;
+
+	/* Intel CopyResource is very slow with NV12 */
+	if (desc.VendorId == 0x8086) {
+		return;
+	}
 
 	ComQIPtr<ID3D11Device1> d3d11_1(device);
 	if (!d3d11_1) {
@@ -420,14 +424,6 @@ void gs_device::InitDevice(uint32_t adapterIdx)
 	}
 
 	nv12Supported = true;
-	/* Intel CopyResource is very slow with NV12 */
-	if (desc.VendorId == 0x8086) {
-		nv12Preferred = false;
-	}
-	else
-	{
-		nv12Preferred = true;
-	}
 }
 
 static inline void ConvertStencilSide(D3D11_DEPTH_STENCILOP_DESC &desc,
@@ -2224,7 +2220,7 @@ extern "C" EXPORT bool device_shared_texture_available(void)
 
 extern "C" EXPORT bool device_nv12_available(gs_device_t *device)
 {
-	return device->nv12Preferred;
+	return device->nv12Supported;
 }
 
 extern "C" EXPORT void device_debug_marker_begin(gs_device_t *,
