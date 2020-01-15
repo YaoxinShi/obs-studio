@@ -375,7 +375,6 @@ static inline void stage_output_texture(struct obs_core_video *video,
 {
 	uint64_t start, end;
 	profile_start(stage_output_texture_name);
-	start = os_gettime_ns();
 
 	gs_texture_t   *texture;
 	bool        texture_ready;
@@ -389,18 +388,22 @@ static inline void stage_output_texture(struct obs_core_video *video,
 		texture_ready = video->textures_output[prev_texture];
 	}
 
+	start = os_gettime_ns();
 	unmap_last_surface(video);
+	end = os_gettime_ns();
+	blog(LOG_ERROR, "unmap   = %d ns", end - start);
 
 	if (!texture_ready)
 		goto end;
 
+	start = os_gettime_ns();
 	gs_stage_texture(copy, texture);
+	end = os_gettime_ns();
+	blog(LOG_ERROR, "copytex = %d ns", end - start);
 
 	video->textures_copied[cur_texture] = true;
 
 end:
-	end = os_gettime_ns();
-	blog(LOG_ERROR, "stage time = %d ns", end-start);
 	profile_end(stage_output_texture_name);
 }
 
@@ -709,12 +712,18 @@ static inline void output_video_data(struct obs_core_video *video,
 	const struct video_output_info *info;
 	struct video_frame output_frame;
 	bool locked;
+	uint64_t start, end;
 
 	info = video_output_get_info(video->video);
 
+	//start = os_gettime_ns();
 	locked = video_output_lock_frame(video->video, &output_frame, count,
 			input_frame->timestamp);
+	//end = os_gettime_ns();
+	//blog(LOG_ERROR, "lock    = %d ns", end - start);
+
 	if (locked) {
+		start = os_gettime_ns();
 		if (video->gpu_conversion) {
 			set_gpu_converted_data(video, &output_frame,
 					input_frame, info);
@@ -724,8 +733,13 @@ static inline void output_video_data(struct obs_core_video *video,
 		} else {
 			copy_rgbx_frame(&output_frame, input_frame, info);
 		}
+		end = os_gettime_ns();
+		blog(LOG_ERROR, "memcpy  = %d ns", end - start);
 
+		//start = os_gettime_ns();
 		video_output_unlock_frame(video->video);
+		//end = os_gettime_ns();
+		//blog(LOG_ERROR, "unlock  = %d ns", end - start);
 	}
 }
 
@@ -772,6 +786,7 @@ static inline void output_frame(bool raw_active, const bool gpu_active)
 	int prev_texture = cur_texture == 0 ? NUM_TEXTURES-1 : cur_texture-1;
 	struct video_data frame;
 	bool frame_ready = 0;
+	uint64_t start, end;
 
 	memset(&frame, 0, sizeof(struct video_data));
 
@@ -787,12 +802,18 @@ static inline void output_frame(bool raw_active, const bool gpu_active)
 
 	if (raw_active) {
 		profile_start(output_frame_download_frame_name);
+		start = os_gettime_ns();
 		frame_ready = download_frame(video, prev_texture, &frame);
+		end = os_gettime_ns();
+		blog(LOG_ERROR, "map     = %d ns", end - start);
 		profile_end(output_frame_download_frame_name);
 	}
 
 	profile_start(output_frame_gs_flush_name);
+	start = os_gettime_ns();
 	gs_flush();
+	end = os_gettime_ns();
+	blog(LOG_ERROR, "flush   = %d ns", end - start);
 	profile_end(output_frame_gs_flush_name);
 
 	gs_leave_context();
