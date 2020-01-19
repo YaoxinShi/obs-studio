@@ -419,7 +419,7 @@ mfxStatus MFXInitEx(mfxInitParam par, mfxSession *session)
                     }
                     mfxU32 curVendorID = 0, curDeviceID = 0;
                     mfxRes = MFX::SelectImplementationType(implTypes[curImplIdx].adapterID, &implInterface, &curVendorID, &curDeviceID);
-                    if (curVendorID != INTEL_VENDOR_ID)
+                    if (curVendorID != INTEL_VENDOR_ID) /*Note: vendor id = 0x1414, device id = 0x8c is Microsoft basic renderer*/
                         mfxRes = MFX_ERR_UNKNOWN;
                 }
                 if (MFX_ERR_NONE == mfxRes)

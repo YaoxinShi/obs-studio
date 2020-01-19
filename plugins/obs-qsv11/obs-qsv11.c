@@ -106,17 +106,38 @@ static int64_t          g_pts2dtsShift;
 static int64_t          g_prevDts;
 static bool             g_bFirst;
 
+mfxU32 device_ids[4] = { 0,0,0,0 };
+
+static const char *obs_qsv_getname2(void *type_data)
+{
+	UNUSED_PARAMETER(type_data);
+	static char name[128];
+	sprintf(name, "QuickSync H.264, adapter %d, device_id 0x%x", 1, device_ids[1]);
+	return name;
+}
 
 static const char *obs_qsv_getname(void *type_data)
 {
 	UNUSED_PARAMETER(type_data);
-	return "QuickSync H.264";
+	static char name[128];
+	sprintf(name, "QuickSync H.264, adapter %d, device_id 0x%x", 0, device_ids[0]);
+	return name;
+}
+
+static const char* obs_qsv_getname_tex2(void* type_data)
+{
+	UNUSED_PARAMETER(type_data);
+	static char name[128];
+	sprintf(name, "QuickSync H.264 (new), adapter %d, device_id 0x%x", 1, device_ids[1]);
+	return name;
 }
 
 static const char *obs_qsv_getname_tex(void *type_data)
 {
 	UNUSED_PARAMETER(type_data);
-	return "QuickSync H.264 (new)";
+	static char name[128];
+	sprintf(name, "QuickSync H.264 (new), adapter %d, device_id 0x%x", 0, device_ids[0]);
+	return name;
 }
 
 static void obs_qsv_stop(void *data);
@@ -532,6 +553,65 @@ static bool obs_qsv_update(void *data, obs_data_t *settings)
 	return false;
 }
 
+static void* obs_qsv_create2(obs_data_t* settings, obs_encoder_t* encoder)
+{
+	InitializeCriticalSection(&g_QsvCs);
+
+	struct obs_qsv* obsqsv = bzalloc(sizeof(struct obs_qsv));
+	obsqsv->encoder = encoder;
+
+	if (update_settings(obsqsv, settings)) {
+		EnterCriticalSection(&g_QsvCs);
+		obsqsv->context = qsv_encoder_open(&obsqsv->params, 1);
+		LeaveCriticalSection(&g_QsvCs);
+
+		if (obsqsv->context == NULL)
+			warn("qsv failed to load");
+		else
+			load_headers(obsqsv);
+	}
+	else {
+		warn("bad settings specified");
+	}
+
+	qsv_encoder_version(&g_verMajor, &g_verMinor);
+
+	blog(LOG_INFO, "\tmajor:          %d\n"
+		"\tminor:          %d",
+		g_verMajor, g_verMinor);
+
+	// MSDK 1.6 or less doesn't have automatic DTS calculation
+	// including early SandyBridge.
+	// Need to add manual DTS from PTS.
+	if (g_verMajor == 1 && g_verMinor < 7) {
+		int64_t interval = obsqsv->params.nbFrames + 1;
+		int64_t GopPicSize = (int64_t)(obsqsv->params.nKeyIntSec *
+			obsqsv->params.nFpsNum /
+			(float)obsqsv->params.nFpsDen);
+		g_pts2dtsShift = GopPicSize - (GopPicSize / interval) *
+			interval;
+
+		blog(LOG_INFO, "\tinterval:       %d\n"
+			"\tGopPictSize:    %d\n"
+			"\tg_pts2dtsShift: %d",
+			interval, GopPicSize, g_pts2dtsShift);
+	}
+	else
+		g_pts2dtsShift = -1;
+
+	if (!obsqsv->context) {
+		bfree(obsqsv);
+		return NULL;
+	}
+
+	obsqsv->performance_token =
+		os_request_high_performance("qsv encoding");
+
+	g_bFirst = true;
+
+	return obsqsv;
+}
+
 static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 {
 	InitializeCriticalSection(&g_QsvCs);
@@ -541,7 +621,7 @@ static void *obs_qsv_create(obs_data_t *settings, obs_encoder_t *encoder)
 
 	if (update_settings(obsqsv, settings)) {
 		EnterCriticalSection(&g_QsvCs);
-		obsqsv->context = qsv_encoder_open(&obsqsv->params);
+		obsqsv->context = qsv_encoder_open(&obsqsv->params, 0);
 		LeaveCriticalSection(&g_QsvCs);
 
 		if (obsqsv->context == NULL)
@@ -650,6 +730,24 @@ static bool running_on_intel_gpu()
 	}
 	else {
 		return false;
+	}
+}
+
+static void* obs_qsv_create_tex2(obs_data_t* settings, obs_encoder_t* encoder)
+{
+	if (!running_on_intel_gpu())
+	{
+		blog(LOG_INFO, ">>> app not on intel GPU, fall back to old qsv encoder");
+		return obs_encoder_create_rerouted(encoder, "obs_qsv11_2");
+	}
+
+	if (obs_nv12_tex_active()) {
+		blog(LOG_INFO, ">>> new qsv encoder");
+		return obs_qsv_create2(settings, encoder);
+	}
+	else {
+		blog(LOG_INFO, ">>> nv12 tex not active, fall back to old qsv encoder");
+		return obs_encoder_create_rerouted(encoder, "obs_qsv11_2");
 	}
 }
 
@@ -923,6 +1021,22 @@ static bool obs_qsv_encode_tex(void *data, uint32_t handle, int64_t pts,
 	return true;
 }
 
+struct obs_encoder_info obs_qsv_encoder2 = {
+	.id = "obs_qsv11_2",
+	.type = OBS_ENCODER_VIDEO,
+	.codec = "h264",
+	.get_name = obs_qsv_getname2,
+	.create = obs_qsv_create2,
+	.destroy = obs_qsv_destroy,
+	.encode = obs_qsv_encode,
+	.update = obs_qsv_update,
+	.get_properties = obs_qsv_props,
+	.get_defaults = obs_qsv_defaults,
+	.get_extra_data = obs_qsv_extra_data,
+	.get_sei_data = obs_qsv_sei,
+	.get_video_info = obs_qsv_video_info
+};
+
 struct obs_encoder_info obs_qsv_encoder = {
 	.id = "obs_qsv11",
 	.type = OBS_ENCODER_VIDEO,
@@ -931,6 +1045,23 @@ struct obs_encoder_info obs_qsv_encoder = {
 	.create = obs_qsv_create,
 	.destroy = obs_qsv_destroy,
 	.encode = obs_qsv_encode,
+	.update = obs_qsv_update,
+	.get_properties = obs_qsv_props,
+	.get_defaults = obs_qsv_defaults,
+	.get_extra_data = obs_qsv_extra_data,
+	.get_sei_data = obs_qsv_sei,
+	.get_video_info = obs_qsv_video_info
+};
+
+struct obs_encoder_info obs_qsv_encoder_tex2 = {
+	.id = "obs_qsv11_tex_2",
+	.type = OBS_ENCODER_VIDEO,
+	.codec = "h264",
+	.get_name = obs_qsv_getname_tex2,
+	.create = obs_qsv_create_tex2,
+	.destroy = obs_qsv_destroy,
+	.caps = OBS_ENCODER_CAP_PASS_TEXTURE,
+	.encode_texture = obs_qsv_encode_tex,
 	.update = obs_qsv_update,
 	.get_properties = obs_qsv_props,
 	.get_defaults = obs_qsv_defaults,
