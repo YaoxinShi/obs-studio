@@ -128,7 +128,7 @@ static const char* obs_qsv_getname_tex2(void* type_data)
 {
 	UNUSED_PARAMETER(type_data);
 	static char name[128];
-	sprintf(name, "QuickSync H.264 (new), adapter %d, device_id 0x%x", 1, device_ids[1]);
+	sprintf(name, "QuickSync H.264 (new), adapter %d, device_id 0x%x [NOT WORK]", 1, device_ids[1]);
 	return name;
 }
 
