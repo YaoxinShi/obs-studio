@@ -3,6 +3,11 @@ project(obs-qsv11)
 include_directories(libmfx/include/msdk/include)
 include_directories(libmfx/include)
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /MT")
+
 set(obs-qsv11_libmfx_SOURCES
 	libmfx/src/main.cpp
 	libmfx/src/mfx_critical_section.cpp
