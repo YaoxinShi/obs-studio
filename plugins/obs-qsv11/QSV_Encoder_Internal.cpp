@@ -550,7 +550,18 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 		if (MFX_ERR_NONE < sts && !m_pTaskPool[nTaskIdx].syncp) {
 			// Repeat the call if warning and no output
 			if (MFX_WRN_DEVICE_BUSY == sts)
-				MSDK_SLEEP(1);  // Wait if device is busy, then repeat the same call
+				if (m_pTaskPool[nTaskIdx].syncp) {
+					int sync_ret;
+					sync_ret = m_session.SyncOperation(m_pTaskPool[nTaskIdx].syncp, 60000);
+					if (sync_ret == MFX_ERR_NONE) {
+						m_pTaskPool[nTaskIdx].syncp = NULL;
+					}
+					else {
+						sts = MFX_ERR_ABORTED;
+					}
+				} else {
+					MSDK_SLEEP(1);  // Wait if device is busy, then repeat the same call
+				}
 		} else if (MFX_ERR_NONE < sts && m_pTaskPool[nTaskIdx].syncp) {
 			sts = MFX_ERR_NONE;     // Ignore warnings if output is available
 			break;
@@ -610,7 +621,18 @@ mfxStatus QSV_Encoder_Internal::Encode_tex(uint64_t ts, uint32_t tex_handle,
 		if (MFX_ERR_NONE < sts && !m_pTaskPool[nTaskIdx].syncp) {
 			// Repeat the call if warning and no output
 			if (MFX_WRN_DEVICE_BUSY == sts)
-				MSDK_SLEEP(1);  // Wait if device is busy, then repeat the same call
+				if (m_pTaskPool[nTaskIdx].syncp) {
+					int sync_ret;
+					sync_ret = m_session.SyncOperation(m_pTaskPool[nTaskIdx].syncp, 60000);
+					if (sync_ret == MFX_ERR_NONE) {
+						m_pTaskPool[nTaskIdx].syncp = NULL;
+					}
+					else {
+						sts = MFX_ERR_ABORTED;
+					}
+				} else {
+					MSDK_SLEEP(1);  // Wait if device is busy, then repeat the same call
+				}
 			} else if (MFX_ERR_NONE < sts && m_pTaskPool[nTaskIdx].syncp) {
 				sts = MFX_ERR_NONE;     // Ignore warnings if output is available
 				break;
