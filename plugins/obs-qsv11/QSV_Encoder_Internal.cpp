@@ -596,7 +596,7 @@ mfxStatus QSV_Encoder_Internal::Encode_tex(uint64_t ts, uint32_t tex_handle,
 	//copy to default surface directly
 	pSurface->Data.TimeStamp = ts;
 	if (m_bUseD3D11 || m_bD3D9HACK) {
-		sts = m_mfxAllocator.CopyTex(m_mfxAllocator.pthis,
+		sts = simple_copytex(m_mfxAllocator.pthis,
 			pSurface->Data.MemId, tex_handle, lock_key, next_key);
 		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 	}

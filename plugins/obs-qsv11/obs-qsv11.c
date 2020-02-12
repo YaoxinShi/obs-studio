@@ -544,7 +544,7 @@ static HANDLE get_lib(const char *lib)
 
 typedef HRESULT(WINAPI *CREATEDXGIFACTORY1PROC)(REFIID, void **);
 
-static bool running_on_intel_gpu()
+static bool is_intel_gpu_primary()
 {
 	HMODULE                 dxgi = get_lib("DXGI.dll");
 	CREATEDXGIFACTORY1PROC  create_dxgi;
@@ -595,7 +595,7 @@ static bool running_on_intel_gpu()
 
 static void *obs_qsv_create_tex(obs_data_t *settings, obs_encoder_t *encoder)
 {
-	if (! running_on_intel_gpu())
+	if (! is_intel_gpu_primary())
 	{
 		blog(LOG_INFO, ">>> app not on intel GPU, fall back to old qsv encoder");
 		return obs_encoder_create_rerouted(encoder, "obs_qsv11");
