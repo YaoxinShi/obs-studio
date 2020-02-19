@@ -43,8 +43,6 @@ File Name: mfx_library_iterator.cpp
 
 #include <vector>
 
-extern mfxU32 device_ids[4];
-
 namespace MFX
 {
 
@@ -128,7 +126,6 @@ mfxStatus SelectImplementationType(const mfxU32 adapterNum, mfxIMPL *pImplInterf
         *pDeviceID = dxvaDevice.GetDeviceID();
     }
 
-    device_ids[adapterNum] = *pDeviceID;
     return MFX_ERR_NONE;
 }
 

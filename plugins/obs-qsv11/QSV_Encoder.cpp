@@ -71,20 +71,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 mfxIMPL              impl = MFX_IMPL_HARDWARE_ANY;
 mfxVersion           ver = {{0, 1}}; // for backward compatibility
 std::atomic<bool>    is_active{false};
-mfxU32               device_ids[4] = { 0,0,0,0 };
-
-bool is_iGfx(uint32_t device_id)
-{
-	switch (device_id)
-	{
-	case 0x4905:
-	case 0x4906:
-		return false;
-
-	default:
-		return true;
-	}
-}
 
 void qsv_encoder_version(unsigned short *major, unsigned short *minor)
 {
@@ -95,29 +81,6 @@ void qsv_encoder_version(unsigned short *major, unsigned short *minor)
 qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 {
 	bool false_value = false;
-
-	int enc_number = 0;
-	mfxVersion ver = { {0 , 1} };
-	mfxSession session;
-	mfxIMPL impl_list[4] = {MFX_IMPL_HARDWARE, MFX_IMPL_HARDWARE2, MFX_IMPL_HARDWARE3, MFX_IMPL_HARDWARE4};
-	mfxIMPL impl_iGfx = MFX_IMPL_HARDWARE_ANY;
-
-	for (int i = 0; i < 4; i++)
-	{
-		if (MFX_ERR_NONE == MFXInit(impl_list[i] | MFX_IMPL_VIA_D3D11, &ver, &session)) {
-			enc_number++;
-			if (is_iGfx(device_ids[i]) && (impl_iGfx == MFX_IMPL_HARDWARE_ANY))
-			{
-				impl_iGfx = impl_list[i];
-			}
-			MFXClose(session);
-		}
-	}
-
-	if (enc_number > 1)
-	{
-		impl = impl_iGfx;
-	}
 
 	QSV_Encoder_Internal *pEncoder = new QSV_Encoder_Internal(impl, ver);
 	mfxStatus sts = pEncoder->Open(pParams);
