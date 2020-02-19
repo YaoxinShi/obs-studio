@@ -531,10 +531,10 @@ bool IsOldIntelPlatform(uint32_t device_id)
 	case 0x590A:
 	case 0x590B:
 	case 0x590E:
-	case 0x5912:
+	//case 0x5912: /*Dell desktop*/
 	case 0x5913:
 	case 0x5915:
-	case 0x5916:
+	//case 0x5916: /*Lenovo laptop*/
 	case 0x5917:
 	case 0x591A:
 	case 0x591B:
@@ -562,7 +562,7 @@ bool IsOldIntelPlatform(uint32_t device_id)
 	case 0x3E93:
 	case 0x3E94:
 	case 0x3E96:
-	case 0x3E98:
+	//case 0x3E98: /*Lab desktop with DG*/
 	case 0x3E99:
 	case 0x3E9A:
 	case 0x3E9C:
