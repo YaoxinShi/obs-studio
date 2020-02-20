@@ -63,6 +63,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <atomic>
 #include <intrin.h>
+#include <d3d11.h>
+#include <dxgi1_2.h>
 
 #define do_log(level, format, ...) \
 	blog(level, "[qsv encoder: '%s'] " format, \
@@ -71,6 +73,95 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 mfxIMPL              impl = MFX_IMPL_HARDWARE_ANY;
 mfxVersion           ver = {{0, 1}}; // for backward compatibility
 std::atomic<bool>    is_active{false};
+
+struct GPUData
+{
+	int adapterIndex;
+	unsigned int vendorID;
+	unsigned int deviceID;
+	bool isIntelIgpu;
+	bool isIntelDgpu;
+	bool isDG1;
+};
+
+int get_adapter_info(struct GPUData* gpuData, int adapterIndex)
+{
+	IDXGIAdapter* pAdapter;
+
+	memset(gpuData, 0, sizeof(struct GPUData));
+	gpuData->adapterIndex = adapterIndex;
+
+	HMODULE hDXGI = LoadLibrary(L"dxgi.dll");
+	if (hDXGI == NULL)
+	{
+		return -1;
+	}
+
+	typedef HRESULT(WINAPI* LPCREATEDXGIFACTORY)(REFIID riid, void** ppFactory);
+
+	LPCREATEDXGIFACTORY pCreateDXGIFactory = (LPCREATEDXGIFACTORY)GetProcAddress(hDXGI, "CreateDXGIFactory1");
+	if (pCreateDXGIFactory == NULL)
+	{
+		pCreateDXGIFactory = (LPCREATEDXGIFACTORY)GetProcAddress(hDXGI, "CreateDXGIFactory");
+
+		if (pCreateDXGIFactory == NULL)
+		{
+			FreeLibrary(hDXGI);
+			return -1;
+		}
+	}
+
+	IDXGIFactory* pFactory = NULL;
+	if (FAILED((*pCreateDXGIFactory)(__uuidof(IDXGIFactory), (void**)(&pFactory))))
+	{
+		FreeLibrary(hDXGI);
+		return -1;
+	}
+
+	if (FAILED(pFactory->EnumAdapters(gpuData->adapterIndex, &pAdapter)))
+	{
+		pFactory->Release();
+		FreeLibrary(hDXGI);
+		return -1;
+	}
+
+	pFactory->Release();
+	FreeLibrary(hDXGI);
+
+	DXGI_ADAPTER_DESC AdapterDesc = {};
+	if (FAILED(pAdapter->GetDesc(&AdapterDesc)))
+	{
+		pAdapter->Release();
+		return -1;
+	}
+
+	gpuData->vendorID = AdapterDesc.VendorId;
+	gpuData->deviceID = AdapterDesc.DeviceId;
+
+	if (AdapterDesc.VendorId == 0x8086)
+	{
+		if (AdapterDesc.DedicatedVideoMemory <= 512 * 1024 * 1024)
+		{
+			gpuData->isIntelIgpu = true;
+		}
+		else
+		{
+			gpuData->isIntelDgpu = true;
+		}
+	}
+
+	if (AdapterDesc.VendorId == 0x8086)
+	{
+		if ((AdapterDesc.DeviceId == 0x4905) ||
+		    (AdapterDesc.DeviceId == 0x4906) ||
+		    (AdapterDesc.DeviceId == 0x4907))
+		{
+			gpuData->isDG1 = true;
+		}
+	}
+
+	return 0;
+}
 
 void qsv_encoder_version(unsigned short *major, unsigned short *minor)
 {
@@ -81,6 +172,33 @@ void qsv_encoder_version(unsigned short *major, unsigned short *minor)
 qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 {
 	bool false_value = false;
+
+	mfxIMPL impl_list[4] = { MFX_IMPL_HARDWARE, MFX_IMPL_HARDWARE2, MFX_IMPL_HARDWARE3, MFX_IMPL_HARDWARE4 };
+	struct GPUData gpuData;
+	bool has_igpu = false;
+	bool has_dgpu = false;
+	bool prefer_igpu = false;
+	int igpu_index = -1;
+	for (int i = 0; i < 4; i++)
+	{
+		if (get_adapter_info(&gpuData, i) == 0)
+		{
+			if (gpuData.isIntelIgpu)
+			{
+				has_igpu = true;
+				if (igpu_index == -1)
+					igpu_index = i;
+			}
+			if (gpuData.isIntelDgpu)
+				has_dgpu = true;
+			if (gpuData.isDG1)
+				prefer_igpu = true;
+		}
+	}
+	if (has_igpu && has_dgpu && prefer_igpu)
+	{
+		impl = impl_list[igpu_index];
+	}
 
 	QSV_Encoder_Internal *pEncoder = new QSV_Encoder_Internal(impl, ver);
 	mfxStatus sts = pEncoder->Open(pParams);
