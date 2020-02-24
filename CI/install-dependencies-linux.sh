@@ -1,7 +1,6 @@
 #!/bin/sh
 set -ex
 
-sudo add-apt-repository ppa:jonathonf/ffmpeg-3 -y
 curl -L https://packagecloud.io/github/git-lfs/gpgkey | sudo apt-key add -
 
 # gets us newer clang
@@ -48,6 +47,7 @@ sudo apt-get install -y \
         libxcb-xinerama0-dev \
         libxcomposite-dev \
         libxinerama-dev \
+        libmbedtls-dev \
         pkg-config \
         python3-dev \
         qtbase5-dev \

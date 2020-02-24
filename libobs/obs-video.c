@@ -24,6 +24,11 @@
 #include "media-io/format-conversion.h"
 #include "media-io/video-frame.h"
 
+#ifdef _WIN32
+#define WIN32_MEAN_AND_LEAN
+#include <windows.h>
+#endif
+
 static uint64_t tick_sources(uint64_t cur_time, uint64_t last_time)
 {
 	struct obs_core_data *data = &obs->data;
@@ -866,9 +871,21 @@ void *obs_graphics_thread(void *param)
 
 		profile_start(video_thread_name);
 
+		gs_enter_context(obs->video.graphics);
+		gs_begin_frame();
+		gs_leave_context();
+
 		profile_start(tick_sources_name);
 		last_time = tick_sources(obs->video.video_time, last_time);
 		profile_end(tick_sources_name);
+
+#ifdef _WIN32
+		MSG msg;
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+#endif
 
 		profile_start(output_frame_name);
 		output_frame(raw_active, gpu_active);
