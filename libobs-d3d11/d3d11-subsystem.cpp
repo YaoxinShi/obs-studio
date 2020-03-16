@@ -464,7 +464,7 @@ void gs_device::InitDevice(uint32_t adapterIdx)
 	}
 
 	/* Intel CopyResource is very slow with NV12 */
-	if (desc.VendorId == 0x8086 && IsOldIntelPlatform(desc.DeviceId)) {
+	if (desc.VendorId == 0x8086 && 0/*IsOldIntelPlatform(desc.DeviceId)*/) {
 		return;
 	}
 
