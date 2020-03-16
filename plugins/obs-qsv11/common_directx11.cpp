@@ -57,7 +57,7 @@ IDXGIAdapter *GetIntelDeviceAdapterHandle(mfxSession session)
 		}
 	}
 
-	HRESULT hres = CreateDXGIFactory(__uuidof(IDXGIFactory2),
+	HRESULT hres = CreateDXGIFactory1(__uuidof(IDXGIFactory2),
 					 (void **)(&g_pDXGIFactory));
 	if (FAILED(hres))
 		return NULL;
