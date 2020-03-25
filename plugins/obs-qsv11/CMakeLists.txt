@@ -73,6 +73,7 @@ set(text_SOURCES
 	text/cnn.cpp
 	text/image_grabber.cpp
 	text/main_text.cpp
+	text/main_segmentation.cpp
 	text/text_detection.cpp
 	text/text_recognition.cpp)
 

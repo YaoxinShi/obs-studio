@@ -61,6 +61,7 @@ public:
 #define DOTA_1225 0
 
 int txt_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t * cnn_mutex);
+int seg_detection(uint8_t* pY, uint32_t width, uint32_t height, pthread_mutex_t* cnn_mutex);
 extern bool enable_roi;
 extern int gDemoMode;
 extern Cnn_input cnn_in;
