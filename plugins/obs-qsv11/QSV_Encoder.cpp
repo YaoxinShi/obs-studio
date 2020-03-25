@@ -178,7 +178,7 @@ static void *cnn_thread_func(void *data)
 			break;
 
 		// todo: the data in pY maybe changed in encoding thread
-		txt_detection(cnn_in.pY, cnn_in.width, cnn_in.height, cnn_in.cnn_mutex);
+		seg_detection(cnn_in.pY, cnn_in.width, cnn_in.height, cnn_in.cnn_mutex);
 	}
 
 	cv::destroyAllWindows();
@@ -273,7 +273,7 @@ int qsv_encoder_encode(qsv_t * pContext, uint64_t ts, uint8_t *pDataY,
 			}
 			pthread_mutex_unlock(&pEncoder->cnn_mutex);
 #else
-			txt_detection(pDataY, strideY, (pDataUV - pDataY) / strideY, NULL);
+			seg_detection(pDataY, strideY, (pDataUV - pDataY) / strideY, NULL);
 #endif
 			//rects_no_rotate.emplace_back(cv::Rect(0, 0, 128, 128));
 			//rects_no_rotate.emplace_back(cv::Rect(128, 128, 128, 128));

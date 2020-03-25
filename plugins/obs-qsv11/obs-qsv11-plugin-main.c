@@ -70,7 +70,7 @@ extern struct obs_encoder_info obs_qsv_encoder;
 #if 1//MULTI_THREAD
 void *cnn_init_func(void *data)
 {
-	cnn_init();
+	cnn_init_seg();
 	pthread_detach(pthread_self());
 	return NULL;
 }
