@@ -65,6 +65,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <intrin.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#if 0
+#include <dxgi1_6.h>
+#include <wrl/client.h>
+using Microsoft::WRL::ComPtr;
+#endif
 
 #define do_log(level, format, ...) \
 	blog(level, "[qsv encoder: '%s'] " format, "msdk_impl", ##__VA_ARGS__)
@@ -116,6 +121,52 @@ int get_adapter_info(struct GPUData* gpuData, int adapterIndex)
 		FreeLibrary(hDXGI);
 		return -1;
 	}
+
+#if 0
+	ComPtr<IDXGIFactory> pFactory1 = NULL;
+	if (FAILED((*pCreateDXGIFactory)(__uuidof(IDXGIFactory),
+					 (void **)(&pFactory1)))) {
+		FreeLibrary(hDXGI);
+		return -1;
+	}
+
+	ComPtr<IDXGIFactory6> pFactory6;
+	HRESULT hr = pFactory1.As(&pFactory6);
+	if (SUCCEEDED(hr)) {
+		ComPtr<IDXGIAdapter1> adapter;
+		DXGI_ADAPTER_DESC AdapterDesc = {};
+
+		for (int i = 0; i < 4; i++) {
+			hr = pFactory6->EnumAdapterByGpuPreference(
+				i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+				IID_PPV_ARGS(adapter.ReleaseAndGetAddressOf()));
+
+			if (adapter != NULL) {
+				if (SUCCEEDED(adapter->GetDesc(&AdapterDesc))) {
+					gpuData->vendorID =
+						AdapterDesc.VendorId;
+					gpuData->deviceID =
+						AdapterDesc.DeviceId;
+				}
+			}
+		}
+
+		for (int i = 0; i < 4; i++) {
+			hr = pFactory6->EnumAdapterByGpuPreference(
+				i, DXGI_GPU_PREFERENCE_MINIMUM_POWER,
+				IID_PPV_ARGS(adapter.ReleaseAndGetAddressOf()));
+
+			if (adapter != NULL) {
+				if (SUCCEEDED(adapter->GetDesc(&AdapterDesc))) {
+					gpuData->vendorID =
+						AdapterDesc.VendorId;
+					gpuData->deviceID =
+						AdapterDesc.DeviceId;
+				}
+			}
+		}
+	}
+#endif
 
 	if (FAILED(pFactory->EnumAdapters(gpuData->adapterIndex, &pAdapter)))
 	{
