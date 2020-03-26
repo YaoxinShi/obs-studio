@@ -8,11 +8,6 @@ endif()
 include_directories(libmfx/include/msdk/include)
 include_directories(libmfx/include)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /MT")
-
 # Find OpenCV components
 find_package(OpenCV COMPONENTS REQUIRED)
 message(STATUS "=== OpenCV library status: ===")
