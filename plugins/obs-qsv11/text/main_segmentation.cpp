@@ -35,6 +35,7 @@ using namespace InferenceEngine;
 //Cnn text_detection, text_recognition;
 //std::map<std::string, InferencePlugin> plugins_for_devices;
 CNNNetwork network_seg;
+ExecutableNetwork executable_network;
 
 // in
 //Cnn_input cnn_in;
@@ -88,6 +89,57 @@ static std::string fileNameNoExt(const std::string& filepath) {
 	return filepath.substr(0, pos);
 }
 
+void alpha_blend(cv::Mat img, int w, int h, std::vector<std::vector<size_t>> seg_class, int seg_w, int seg_h)
+{
+    static std::vector<std::vector<int>> colors = {
+        {128, 64,  128},
+        {232, 35,  244},
+        {70,  70,  70},
+        {156, 102, 102},
+        {153, 153, 190},
+        {153, 153, 153},
+        {30,  170, 250},
+        {0,   220, 220},
+        {35,  142, 107},
+        {152, 251, 152},
+        {180, 130, 70},
+        {60,  20,  220},
+        {0,   0,   255},
+        {142, 0,   0},
+        {70,  0,   0},
+        {100, 60,  0},
+        {90,  0,   0},
+        {230, 0,   0},
+        {32,  11,  119},
+        {0,   74,  111},
+        {81,  0,   81}
+    };
+
+	int i, j;
+	float alpha = 1;// 0.3;
+	for (j = 0; j < h; j++)
+	{
+		for (i = 0; i < w; i++)
+		{
+			int r = img.data[(w * j + i) * 3];
+			int g = img.data[(w * j + i) * 3 + 1];
+			int b = img.data[(w * j + i) * 3 + 2];
+
+			int seg_i = i * seg_w / w;
+			int seg_j = j * seg_h / h;
+			int seg_cls = seg_class[seg_j][seg_i];
+
+			int seg_r = colors[seg_cls][0];
+			int seg_g = colors[seg_cls][1];
+			int seg_b = colors[seg_cls][2];
+
+			img.data[(w * j + i) * 3] = r * (1 - alpha) + seg_r * alpha;
+			img.data[(w * j + i) * 3 + 1] = g * (1 - alpha) + seg_g * alpha;
+			img.data[(w * j + i) * 3 + 2] = b * (1 - alpha) + seg_b * alpha;
+		}
+	}
+}
+
 int cnn_init_seg()
 {
     //std::vector<std::string> devices = { "GPU", "CPU" };
@@ -130,6 +182,9 @@ int cnn_init_seg()
             std::string binFileName = fileNameNoExt(model_path) + ".bin";
             networkReader.ReadWeights(binFileName);
             network_seg = networkReader.getNetwork();
+
+            /** Loading model to the device **/
+            executable_network = ie.LoadNetwork(network_seg, "GPU");
         }
         cnn_initialized = true;
         do_log(LOG_WARNING, "Init plugins, done");
@@ -180,6 +235,9 @@ int seg_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
         while (!image.empty() || is_image) {
 #endif
         do_log(LOG_WARNING, "-------------------------------------------------------");
+        std::chrono::steady_clock::time_point infer_begin, infer_end, pp_begin, pp_end, draw_begin, draw_end, begin_frame, end_frame;
+        begin_frame = std::chrono::steady_clock::now();
+
         cv::Mat demo_image = image.clone();
         cv::Size inference_image_size = image.size();
         if (gDemoMode != 0)
@@ -188,16 +246,128 @@ int seg_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
         }
         cv::Mat inference_image = image(cv::Rect(0, 0, inference_image_size.width, inference_image_size.height));
 
-        std::chrono::steady_clock::time_point infer_begin, infer_end, pp_begin, pp_end, draw_begin, draw_end, begin_frame, end_frame;
-        begin_frame = std::chrono::steady_clock::now();
         std::vector<cv::Rect> rects;
         if (cnn_initialized) {
             infer_begin = std::chrono::steady_clock::now();
-            //todo: inference
+            // --------------------------- 3. Configure input & output ---------------------------------------------
+            // --------------------------- Prepare output blobs ----------------------------------------------------
+            OutputsDataMap outputInfo(network_seg.getOutputsInfo());
+            // BlobMap outputBlobs;
+            std::string firstOutputName;
+
+	    for (auto& item : outputInfo) {
+                if (firstOutputName.empty()) {
+                    firstOutputName = item.first;
+                }
+                DataPtr outputData = item.second;
+                if (!outputData) {
+                    throw std::logic_error("output data pointer is not valid");
+                }
+
+		item.second->setPrecision(Precision::FP32);
+            }
+            // -----------------------------------------------------------------------------------------------------
+
+	    // --------------------------- 5. Create infer request -------------------------------------------------
+            InferRequest infer_request = executable_network.CreateInferRequest();
+            // -----------------------------------------------------------------------------------------------------
+
+	    // --------------------------- 6. Prepare input --------------------------------------------------------
+            InputsDataMap inputInfo(network_seg.getInputsInfo());
+            if (inputInfo.size() != 1)
+            {
+                do_log(LOG_WARNING, "Demo supports topologies only with 1 input");
+                assert(0);
+            }
+            auto inputInfoItem = *inputInfo.begin();
+            cv::Size input_size = cv::Size(inputInfoItem.second->getTensorDesc().getDims()[3], inputInfoItem.second->getTensorDesc().getDims()[2]);
+            cv::resize(inference_image, inference_image, input_size);
+
+            network_seg.setBatchSize(1);
+            inputInfoItem.second->setPrecision(Precision::U8);
+
+	    for (const auto& item : inputInfo) {
+                /** Creating input blob **/
+                Blob::Ptr input = infer_request.GetBlob(item.first);
+
+		/** Fill input tensor with images. First r channel, then g and b channels **/
+                size_t num_channels = input->getTensorDesc().getDims()[1];
+                size_t image_size = input->getTensorDesc().getDims()[3] * input->getTensorDesc().getDims()[2];
+		auto data = input->buffer().as<PrecisionTrait<Precision::U8>::value_type*>();
+
+		/** Iterate over all pixel in image (r,g,b) **/
+                for (size_t pid = 0; pid < image_size; pid++) {
+                    /** Iterate over all channels **/
+                    for (size_t ch = 0; ch < num_channels; ++ch) {
+                        /**          [images stride + channels stride + pixel id ] all in bytes            **/
+                        data[ch * image_size + pid] = inference_image.data[pid * num_channels + ch];
+                    }
+                }
+            }
+            // -----------------------------------------------------------------------------------------------------
+
+	    // --------------------------- 7. Do inference ---------------------------------------------------------
+            infer_request.Infer();
+            // -----------------------------------------------------------------------------------------------------
             infer_end = std::chrono::steady_clock::now();
 
-	    pp_begin = std::chrono::steady_clock::now();
-            //todo: postprocess
+            pp_begin = std::chrono::steady_clock::now();
+            // --------------------------- 8. Process output -------------------------------------------------------
+            const Blob::Ptr output_blob = infer_request.GetBlob(firstOutputName);
+            const auto output_data = output_blob->buffer().as<float*>();
+
+	    size_t N = output_blob->getTensorDesc().getDims().at(0);
+            size_t C, H, W;
+
+	    size_t output_blob_shape_size = output_blob->getTensorDesc().getDims().size();
+            //slog::info << "Output blob has " << output_blob_shape_size << " dimensions" << slog::endl;
+
+	    if (output_blob_shape_size == 3) {
+                C = 1;
+                H = output_blob->getTensorDesc().getDims().at(1);
+                W = output_blob->getTensorDesc().getDims().at(2);
+            }
+            else if (output_blob_shape_size == 4) {
+                C = output_blob->getTensorDesc().getDims().at(1);
+                H = output_blob->getTensorDesc().getDims().at(2);
+                W = output_blob->getTensorDesc().getDims().at(3);
+            }
+            else {
+                do_log(LOG_WARNING, "Unexpected output blob shape. Only 4D and 3D output blobs are supported.");
+                assert(0);
+            }
+
+	    size_t image_stride = W * H * C;
+
+	    /** Iterating over all images **/
+            for (size_t image = 0; image < N; ++image) {
+                /** This vector stores pixels classes **/
+                std::vector<std::vector<size_t>> outArrayClasses(H, std::vector<size_t>(W, 0));
+                std::vector<std::vector<float>> outArrayProb(H, std::vector<float>(W, 0.));
+                /** Iterating over each pixel **/
+                for (size_t w = 0; w < W; ++w) {
+                    for (size_t h = 0; h < H; ++h) {
+                        /* number of channels = 1 means that the output is already ArgMax'ed */
+                        if (C == 1) {
+                            outArrayClasses[h][w] = static_cast<size_t>(output_data[image_stride * image + W * h + w]);
+                        }
+                        else {
+                            /** Iterating over each class probability **/
+                            for (size_t ch = 0; ch < C; ++ch) {
+                                auto data = output_data[image_stride * image + W * H * ch + W * h + w];
+                                if (data > outArrayProb[h][w]) {
+                                    outArrayClasses[h][w] = ch;
+                                    outArrayProb[h][w] = data;
+                                }
+                            }
+                        }
+                    }
+                }
+                /* alpha blend outArrayProb to demo image*/
+	        alpha_blend(demo_image, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
+            }
+            // -----------------------------------------------------------------------------------------------------
+
             pp_end = std::chrono::steady_clock::now();
         } else {
             rects.emplace_back(cv::Point2f(0.0f, 0.0f), cv::Size2f(100.0f, 100.0f));
@@ -274,7 +444,7 @@ int seg_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             pthread_mutex_unlock(cnn_mutex);
         }
     } catch (const std::exception & ex) {
-        std::cerr << ex.what() << std::endl;
+	do_log(LOG_WARNING, "error: %s", ex.what());
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
