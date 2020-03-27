@@ -92,27 +92,28 @@ static std::string fileNameNoExt(const std::string& filepath) {
 void alpha_blend(cv::Mat img, int w, int h, std::vector<std::vector<size_t>> seg_class, int seg_w, int seg_h)
 {
     static std::vector<std::vector<int>> colors = {
-        {128, 64,  128},
-        {232, 35,  244},
-        {70,  70,  70},
-        {156, 102, 102},
-        {153, 153, 190},
-        {153, 153, 153},
-        {30,  170, 250},
-        {0,   220, 220},
-        {35,  142, 107},
-        {152, 251, 152},
-        {180, 130, 70},
-        {60,  20,  220},
-        {0,   0,   255},
-        {142, 0,   0},
-        {70,  0,   0},
-        {100, 60,  0},
-        {90,  0,   0},
-        {230, 0,   0},
-        {32,  11,  119},
-        {0,   74,  111},
-        {81,  0,   81}
+        //seems in B,G,R order, as OpenCV cv::Mat seems in B,G,R byte order. Anyway, this matches OpenVINO demo's writeOutputBmp() function.
+        {128, 64,  128}, //road              Dark purple
+        {232, 35,  244}, //sidewalk          Bright purple
+        {70,  70,  70},  //building          Dark grey
+        {156, 102, 102}, //wall              Lead
+        {153, 153, 190}, //fence             Bright brown
+        {153, 153, 153}, //pole              Bright grey
+        {30,  170, 250}, //traffic light     Orange
+        {0,   220, 220}, //traffic sign      Yellow
+        {35,  142, 107}, //vegetation        Dark green
+        {152, 251, 152}, //terrain           Bright green
+        {180, 130, 70},  //sky               Cerulean
+        {60,  20,  220}, //person            Orange red
+        {0,   0,   255}, //rider             Red
+        {142, 0,   0},   //car               Blue           <---- 13
+        {70,  0,   0},   //truck             Dark blue
+        {100, 60,  0},   //bus               Navy           <---- 15
+        {90,  0,   0},   //train             Dark blue
+        {230, 0,   0},   //motorcycle        Bright blue
+        {32,  11,  119}, //bicycle           Dark red
+        {0,   74,  111}, //ego-vehicle       Dark brown
+        {81,  0,   81},  //                  Dark purple
     };
 
 	int i, j;
@@ -138,6 +139,51 @@ void alpha_blend(cv::Mat img, int w, int h, std::vector<std::vector<size_t>> seg
 			img.data[(w * j + i) * 3 + 2] = b * (1 - alpha) + seg_b * alpha;
 		}
 	}
+}
+
+void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::vector<size_t>> seg_class, int seg_w, int seg_h) {
+    float min_area = 300;
+    float min_height = 10;
+
+    cv::Mat mask(h, w, CV_8UC1);
+    int i, j;
+    for (j = 0; j < h; j++)
+    {
+        for (i = 0; i < w; i++)
+        {
+            int seg_i = i * seg_w / w;
+            int seg_j = j * seg_h / h;
+            int seg_cls = seg_class[seg_j][seg_i];
+	    //mask.data[w * j + i] = seg_cls;
+	    mask.data[w * j + i] = (seg_cls == 13 || seg_cls == 15) ? 1 : 0;
+        }
+    }
+
+    double min_val;
+    double max_val;
+    cv::minMaxLoc(mask, &min_val, &max_val);
+    int max_bbox_idx = static_cast<int>(max_val);
+
+    for (int i = 1; i <= max_bbox_idx; i++) { // loop all seg_class
+        cv::Mat bbox_mask = (mask == i);
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(bbox_mask, contours, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+        for (int j = 0; j < contours.size(); j++) // loop current seg_class's all contour
+        {
+            cv::RotatedRect r = cv::minAreaRect(contours[j]);
+            if (std::min(r.size.width, r.size.height) < min_height)
+            {
+                do_log(LOG_WARNING, "kill rect by height");
+                continue;
+            }
+            if (r.size.area() < min_area)
+            {
+                do_log(LOG_WARNING, "kill rect by area");
+                continue;
+            }
+            bboxes.emplace_back(r.boundingRect());
+        }
+    }
 }
 
 int cnn_init_seg()
@@ -369,6 +415,7 @@ int seg_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
                 }
                 /* alpha blend outArrayProb to demo image*/
 	        alpha_blend(demo_image, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
+		maskToBoxes(rects, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
             }
             // -----------------------------------------------------------------------------------------------------
 
