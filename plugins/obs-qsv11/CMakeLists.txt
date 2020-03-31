@@ -13,6 +13,7 @@ set(obs-qsv11_libmfx_SOURCES
 	libmfx/src/mfx_critical_section.cpp
 	libmfx/src/mfx_dispatcher.cpp
 	libmfx/src/mfx_dispatcher_log.cpp
+	libmfx/src/mfx_driver_store_loader.cpp
 	libmfx/src/mfx_dxva2_device.cpp
 	libmfx/src/mfx_function_table.cpp
 	libmfx/src/mfx_library_iterator.cpp
@@ -23,24 +24,39 @@ set(obs-qsv11_libmfx_SOURCES
 	)
 
 set(obs-qsv11_libmfx_HEADERS
+	libmfx/include/msdk/include/mfxadapter.h
 	libmfx/include/msdk/include/mfxastructures.h
 	libmfx/include/msdk/include/mfxaudio.h
 	libmfx/include/msdk/include/mfxaudio++.h
+	libmfx/include/msdk/include/mfxbrc.h
+	libmfx/include/msdk/include/mfxcamera.h
 	libmfx/include/msdk/include/mfxcommon.h
 	libmfx/include/msdk/include/mfxdefs.h
+	libmfx/include/msdk/include/mfxdispatcherprefixedfunctions.h
+	libmfx/include/msdk/include/mfxenc.h
+	libmfx/include/msdk/include/mfxfei.h
+	libmfx/include/msdk/include/mfxfeihevc.h
 	libmfx/include/msdk/include/mfxjpeg.h
+	libmfx/include/msdk/include/mfxla.h
 	libmfx/include/msdk/include/mfxmvc.h
+	libmfx/include/msdk/include/mfxpak.h
+	libmfx/include/msdk/include/mfxpcp.h
 	libmfx/include/msdk/include/mfxplugin.h
 	libmfx/include/msdk/include/mfxplugin++.h
+	libmfx/include/msdk/include/mfxsc.h
+	libmfx/include/msdk/include/mfxscd.h
 	libmfx/include/msdk/include/mfxsession.h
 	libmfx/include/msdk/include/mfxstructures.h
 	libmfx/include/msdk/include/mfxvideo.h
 	libmfx/include/msdk/include/mfxvideo++.h
+	libmfx/include/msdk/include/mfxvp8.h
+	libmfx/include/msdk/include/mfxvp9.h
 	libmfx/include/msdk/include/mfxvstructures.h
 	libmfx/include/mfx_critical_section.h
 	libmfx/include/mfx_dispatcher.h
 	libmfx/include/mfx_dispatcher_defs.h
 	libmfx/include/mfx_dispatcher_log.h
+	libmfx/include/mfx_driver_store_loader.h
 	libmfx/include/mfx_dxva2_device.h
 	libmfx/include/mfx_exposed_functions_list.h
 	libmfx/include/mfx_library_iterator.h

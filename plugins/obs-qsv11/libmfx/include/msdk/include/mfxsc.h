@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019 Intel Corporation
+// Copyright (c) 2018-2019 Intel Corporation
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -17,8 +17,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-#ifndef __MFXENC_H__
-#define __MFXENC_H__
+#ifndef __MFXSC_H__
+#define __MFXSC_H__
 #include "mfxdefs.h"
 #include "mfxvstructures.h"
 
@@ -27,43 +27,23 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-MFX_PACK_BEGIN_STRUCT_W_PTR()
-typedef struct _mfxENCInput{
-    mfxU32  reserved[32];
+/* Extended Buffer Ids */
+enum 
+{
+    MFX_EXTBUFF_SCREEN_CAPTURE_PARAM = MFX_MAKEFOURCC('S','C','P','A')
+};
 
-    mfxFrameSurface1 *InSurface;
+MFX_PACK_BEGIN_USUAL_STRUCT()
+typedef struct
+{
+    mfxExtBuffer    Header;
 
-    mfxU16  NumFrameL0;
-    mfxFrameSurface1 **L0Surface;
-    mfxU16  NumFrameL1;
-    mfxFrameSurface1 **L1Surface;
-
-    mfxU16  NumExtParam;
-    mfxExtBuffer    **ExtParam;
-} mfxENCInput;
+    mfxU32          DisplayIndex;
+    mfxU16          EnableDirtyRect;
+    mfxU16          EnableCursorCapture;
+    mfxU16          reserved[24];
+} mfxExtScreenCaptureParam;
 MFX_PACK_END()
-
-MFX_PACK_BEGIN_STRUCT_W_PTR()
-typedef struct _mfxENCOutput{
-    mfxU32  reserved[32];
-
-    mfxFrameSurface1 *OutSurface;
-
-    mfxU16  NumExtParam;
-    mfxExtBuffer    **ExtParam;
-} mfxENCOutput;
-MFX_PACK_END()
-
-
-mfxStatus MFX_CDECL MFXVideoENC_Query(mfxSession session, mfxVideoParam *in, mfxVideoParam *out);
-mfxStatus MFX_CDECL MFXVideoENC_QueryIOSurf(mfxSession session, mfxVideoParam *par, mfxFrameAllocRequest *request);
-mfxStatus MFX_CDECL MFXVideoENC_Init(mfxSession session, mfxVideoParam *par);
-mfxStatus MFX_CDECL MFXVideoENC_Reset(mfxSession session, mfxVideoParam *par);
-mfxStatus MFX_CDECL MFXVideoENC_Close(mfxSession session);
-
-mfxStatus MFX_CDECL MFXVideoENC_ProcessFrameAsync(mfxSession session, mfxENCInput *in, mfxENCOutput *out, mfxSyncPoint *syncp);
-
-mfxStatus MFX_CDECL MFXVideoENC_GetVideoParam(mfxSession session, mfxVideoParam *par);
 
 #ifdef __cplusplus
 } // extern "C"

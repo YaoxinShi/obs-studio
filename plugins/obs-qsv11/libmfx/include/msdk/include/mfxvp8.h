@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Intel Corporation
+// Copyright (c) 2017-2019 Intel Corporation
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -17,34 +17,55 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-#ifndef __MFXSESSION_H__
-#define __MFXSESSION_H__
-#include "mfxcommon.h"
+#ifndef __MFXVP8_H__
+#define __MFXVP8_H__
+
+#include "mfxdefs.h"
 
 #ifdef __cplusplus
-extern "C"
-{
-#endif /* __cplusplus */
+extern "C" {
+#endif
 
-/* Global Functions */
-typedef struct _mfxSession *mfxSession;
-mfxStatus MFX_CDECL MFXInit(mfxIMPL impl, mfxVersion *ver, mfxSession *session);
-mfxStatus MFX_CDECL MFXInitEx(mfxInitParam par, mfxSession *session);
-mfxStatus MFX_CDECL MFXClose(mfxSession session);
+enum {
+    MFX_CODEC_VP8 = MFX_MAKEFOURCC('V','P','8',' '),
+};
 
-mfxStatus MFX_CDECL MFXQueryIMPL(mfxSession session, mfxIMPL *impl);
-mfxStatus MFX_CDECL MFXQueryVersion(mfxSession session, mfxVersion *version);
+/* CodecProfile*/
+enum {
+    MFX_PROFILE_VP8_0                       = 0+1, 
+    MFX_PROFILE_VP8_1                       = 1+1,
+    MFX_PROFILE_VP8_2                       = 2+1,
+    MFX_PROFILE_VP8_3                       = 3+1,
+};
 
-mfxStatus MFX_CDECL MFXJoinSession(mfxSession session, mfxSession child);
-mfxStatus MFX_CDECL MFXDisjoinSession(mfxSession session);
-mfxStatus MFX_CDECL MFXCloneSession(mfxSession session, mfxSession *clone);
-mfxStatus MFX_CDECL MFXSetPriority(mfxSession session, mfxPriority priority);
-mfxStatus MFX_CDECL MFXGetPriority(mfxSession session, mfxPriority *priority);
-mfxStatus MFX_CDECL MFXDoWork(mfxSession session);
+/* Extended Buffer Ids */
+enum {
+    MFX_EXTBUFF_VP8_CODING_OPTION =   MFX_MAKEFOURCC('V','P','8','E'),
+};
+
+MFX_PACK_BEGIN_USUAL_STRUCT()
+typedef struct { 
+    mfxExtBuffer    Header;
+
+    mfxU16   Version;
+    mfxU16   EnableMultipleSegments;
+    mfxU16   LoopFilterType;
+    mfxU16   LoopFilterLevel[4];
+    mfxU16   SharpnessLevel;
+    mfxU16   NumTokenPartitions;
+    mfxI16   LoopFilterRefTypeDelta[4];
+    mfxI16   LoopFilterMbModeDelta[4];
+    mfxI16   SegmentQPDelta[4];
+    mfxI16   CoeffTypeQPDelta[5];
+    mfxU16   WriteIVFHeaders;
+    mfxU32   NumFramesForIVFHeader;
+    mfxU16   reserved[223];
+} mfxExtVP8CodingOption;
+MFX_PACK_END()
 
 #ifdef __cplusplus
-}
-#endif /* __cplusplus */
+} // extern "C"
+#endif
 
 #endif
 
