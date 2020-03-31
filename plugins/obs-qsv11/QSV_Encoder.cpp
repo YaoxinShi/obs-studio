@@ -65,6 +65,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <intrin.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <vector>
+#include "mfxadapter.h"
 #if 0
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -227,6 +229,38 @@ qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 	bool has_dgpu = false;
 	bool prefer_igpu = false;
 	int igpu_index = -1;
+#if use_msdk_api
+       mfxU32 num_adapters_available;
+       mfxStatus mfxsts = MFXQueryAdaptersNumber(&num_adapters_available);
+       if (mfxsts != MFX_ERR_NONE) {
+               do_log(LOG_WARNING, "MFXQueryAdaptersNumber failed");
+       }
+
+       std::vector<mfxAdapterInfo> displays_data(num_adapters_available);
+       mfxAdaptersInfo adapters = {displays_data.data(),
+                                   mfxU32(displays_data.size()), 0u};
+       mfxsts = MFXQueryAdapters(NULL, &adapters);
+       if (mfxsts != MFX_ERR_NONE) {
+               do_log(LOG_WARNING, "MFXQueryAdapters failed");
+       }
+
+       for (int i = 0; i < num_adapters_available; i++) {
+               mfxAdapterInfo adapter = displays_data[i];
+               if (adapter.Platform.MediaAdapterType == MFX_MEDIA_INTEGRATED) {
+                       has_igpu = true;
+                       if (igpu_index == -1)
+                               igpu_index = i;
+               }
+               if (adapter.Platform.MediaAdapterType == MFX_MEDIA_DISCRETE) {
+                       has_dgpu = true;
+               }
+               if ((adapter.Platform.DeviceId == 0x4905) ||
+                   (adapter.Platform.DeviceId == 0x4906) ||
+                   (adapter.Platform.DeviceId == 0x4907)) {
+                       prefer_igpu = true;
+               }
+       }
+#else
 	for (int i = 0; i < 4; i++)
 	{
 		if (get_adapter_info(&gpuData, i) == 0)
@@ -243,6 +277,7 @@ qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 				prefer_igpu = true;
 		}
 	}
+#endif
 	if (has_igpu && has_dgpu && prefer_igpu)
 	{
 		impl = impl_list[igpu_index];
