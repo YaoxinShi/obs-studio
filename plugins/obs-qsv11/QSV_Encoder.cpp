@@ -67,6 +67,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <dxgi1_2.h>
 #include <vector>
 #include "mfxadapter.h"
+#include <VersionHelpers.h>
 #if 0
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -230,8 +231,26 @@ qsv_t *qsv_encoder_open(qsv_param_t *pParams)
 	bool prefer_igpu = false;
 	int igpu_index = -1;
 #if use_msdk_api
+	MFXVideoSession session;
+	mfxVersion version = {{0, 1}};
+	mfxStatus mfxsts;
+	if (IsWindows8OrGreater()) {
+		mfxsts = session.Init(MFX_IMPL_HARDWARE_ANY | MFX_IMPL_VIA_D3D11, &version);
+		if (mfxsts == MFX_ERR_NONE) {
+			session.QueryVersion(&version);
+			session.Close();
+		}
+	} else {
+		mfxsts = session.Init(MFX_IMPL_HARDWARE_ANY | MFX_IMPL_VIA_D3D9, &version);
+		if (mfxsts == MFX_ERR_NONE) {
+			session.QueryVersion(&version);
+			session.Close();
+		}
+	}
+	if (version.Minor >= 31)
+	{
        mfxU32 num_adapters_available;
-       mfxStatus mfxsts = MFXQueryAdaptersNumber(&num_adapters_available);
+       mfxsts = MFXQueryAdaptersNumber(&num_adapters_available);
        if (mfxsts != MFX_ERR_NONE) {
                do_log(LOG_WARNING, "MFXQueryAdaptersNumber failed");
        }
@@ -259,6 +278,7 @@ qsv_t *qsv_encoder_open(qsv_param_t *pParams)
                    (adapter.Platform.DeviceId == 0x4907)) {
                        prefer_igpu = true;
                }
+       }
        }
 #else
 	for (int i = 0; i < 4; i++)
