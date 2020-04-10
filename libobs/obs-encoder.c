@@ -1307,6 +1307,7 @@ void obs_encoder_packet_create_instance(struct encoder_packet *dst,
 	dst->data = (void *)(p_refs + 1);
 	*p_refs = 1;
 	memcpy(dst->data, src->data, src->size);
+	blog(LOG_ERROR, "=== alloc (%p, size=%d)", dst->data, dst->size);	
 }
 
 void obs_duplicate_encoder_packet(struct encoder_packet *dst,
@@ -1332,6 +1333,7 @@ void obs_encoder_packet_ref(struct encoder_packet *dst,
 	}
 
 	*dst = *src;
+	blog(LOG_ERROR, "=== reference (%p, size=%d)", dst->data, dst->size);	
 }
 
 void obs_encoder_packet_release(struct encoder_packet *pkt)
@@ -1344,6 +1346,7 @@ void obs_encoder_packet_release(struct encoder_packet *pkt)
 		if (os_atomic_dec_long(p_refs) == 0)
 			bfree(p_refs);
 	}
+	blog(LOG_ERROR, "=== free (%p, size=%d)", pkt->data, pkt->size);
 
 	memset(pkt, 0, sizeof(struct encoder_packet));
 }

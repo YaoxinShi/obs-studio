@@ -1397,6 +1397,17 @@ static void rtmp_stream_data(void *data, struct encoder_packet *packet)
 		return;
 	}
 
+	{
+		//unsigned char *p = (unsigned char *)src->data;
+		//blog(LOG_ERROR,
+		//     "=== data(size=%d): %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+		//     src->size, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+		blog(LOG_ERROR,"=== %s,dts=%d, pts=%d, timebase_num=%d, timebase_den=%d, dts_usec=%d, sys_dts_usec=%d, track_idx=%d",
+			(packet->type == OBS_ENCODER_VIDEO) ? "video" : "audio",
+			packet->dts, packet->pts, packet->timebase_num, packet->timebase_den,
+			packet->dts_usec, packet->sys_dts_usec, packet->track_idx);
+	}
+
 	if (packet->type == OBS_ENCODER_VIDEO) {
 		if (!stream->got_first_video) {
 			stream->start_dts_offset =
