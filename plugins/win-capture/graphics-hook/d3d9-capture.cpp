@@ -543,6 +543,7 @@ static inline void d3d9_shtex_capture(IDirect3DSurface9 *backbuffer)
 	D3DTEXTUREFILTERTYPE filter;
 	HRESULT hr;
 
+	//hlog("=== d3d9_shtex_capture"); // for Dota2 D3D9, comes here
 	filter = data.using_scale ? D3DTEXF_LINEAR : D3DTEXF_NONE;
 
 	hr = data.device->StretchRect(backbuffer, nullptr, data.d3d9_copytex,
@@ -583,6 +584,7 @@ static inline void d3d9_shmem_capture(IDirect3DSurface9 *backbuffer)
 	int next_tex;
 	HRESULT hr;
 
+	//hlog("=== d3d9_shmem_capture"); // not use
 	d3d9_shmem_capture_queue_copy();
 
 	next_tex = (data.cur_tex == NUM_BUFFERS - 1) ? 0 : data.cur_tex + 1;
@@ -653,6 +655,7 @@ static inline void present_begin(IDirect3DDevice9 *device,
 {
 	HRESULT hr;
 
+	//hlog("=== present_begin"); // for Doat2 D3D9, comes here and calls d3d9_capture (as !overlay)
 	if (!present_recurse) {
 		hr = get_backbuffer(device, &backbuffer);
 		if (FAILED(hr)) {
@@ -674,6 +677,7 @@ static inline void present_end(IDirect3DDevice9 *device,
 {
 	present_recurse--;
 
+	//hlog("=== present_end"); // not call d3d9_capture
 	if (!present_recurse) {
 		if (global_hook_info->capture_overlay) {
 			if (!present_recurse)
