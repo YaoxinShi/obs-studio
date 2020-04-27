@@ -478,6 +478,14 @@ static inline void render_video(struct obs_core_video *video, bool raw_active,
 	gs_enable_depth_test(false);
 	gs_set_cull_mode(GS_NEITHER);
 
+	//os_sleep_ms(100);
+	// [OBS setting -> video -> fps = 30]
+	// slees_ms	Frames missed due to rendering lag	OBS fps at right-bottom
+	// 100		68.6%					9.68 fps
+	// 50		39%					18.39 fps
+	// 30		6%					27.1 fps
+	// "Skipped frames due to encoding lag" is not affected
+
 	render_main_texture(video);
 
 	if (raw_active || gpu_active) {
@@ -717,6 +725,7 @@ static inline void video_sleep(struct obs_core_video *video, bool raw_active,
 		*p_time = cur_time + interval_ns * count;
 	}
 
+	//blog(LOG_INFO, "=== total += %d, lagged_frames += %d", count, count-1);
 	video->total_frames += count;
 	video->lagged_frames += count - 1;
 

@@ -733,6 +733,14 @@ static bool obs_qsv_encode(void *data, struct encoder_frame *frame,
 	mfxBitstream *pBS = NULL;
 
 	int ret;
+	//os_sleep_ms(50);
+	// [OBS setting -> video -> fps = 30]
+	// slees_ms	Skipped frames due to encoding lag
+	// 50		always increase, till 100%
+	// 40		always increase, till 100%
+	// 30		0%
+	// "Frames missed due to rendering lag" and "OBS fps at right-bottom" are not affected
+
 
 	mfxU64 qsvPTS = frame->pts * 90000 / voi->fps_num;
 

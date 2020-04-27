@@ -191,6 +191,14 @@ void render_display(struct obs_display *display)
 	if (!display || !display->enabled)
 		return;
 
+	//os_sleep_ms(50);
+	// [OBS setting -> video -> fps = 30]
+	// slees_ms	Frames missed due to rendering lag	OBS fps at right-bottom
+	// 100		66.7%					10 fps
+	// 50		34.2%					19.69 fps
+	// 30		4%					28.06 fps
+	// "Skipped frames due to encoding lag" is not affected
+
 	GS_DEBUG_MARKER_BEGIN(GS_DEBUG_COLOR_DISPLAY, "obs_display");
 
 	/* -------------------------------------------- */

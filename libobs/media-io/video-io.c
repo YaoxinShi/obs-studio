@@ -159,6 +159,7 @@ static inline bool video_output_cur_frame(struct video_output *video)
 			video->last_added = video->first_added;
 	} else if (skipped) {
 		--frame_info->skipped;
+		//blog(LOG_INFO, "=== skip++");
 		os_atomic_inc_long(&video->skipped_frames);
 	}
 
@@ -185,9 +186,11 @@ static void *video_thread(void *param)
 
 		profile_start(video_thread_name);
 		while (!video->stop && !video_output_cur_frame(video)) {
+			//blog(LOG_INFO, "=== total++");
 			os_atomic_inc_long(&video->total_frames);
 		}
 
+		//blog(LOG_INFO, "=== total++");
 		os_atomic_inc_long(&video->total_frames);
 		profile_end(video_thread_name);
 
