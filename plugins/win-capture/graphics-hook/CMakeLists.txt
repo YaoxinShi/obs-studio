@@ -2,8 +2,8 @@ project(graphics-hook)
 
 set(COMPILE_D3D12_HOOK FALSE CACHE BOOL "Compile D3D12 hook support (required windows 10 SDK)")
 
-find_package(Vulkan REQUIRED)
-include_directories(${VULKAN_INCLUDE_DIR})
+#find_package(Vulkan REQUIRED)
+#include_directories(${VULKAN_INCLUDE_DIR})
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/graphics-hook-config.h.in"
