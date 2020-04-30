@@ -1327,6 +1327,17 @@ void OBSApp::Exec(VoidFunc func)
 	func();
 }
 
+static void ui_task_handler(obs_task_t task, void *param, bool wait)
+{
+	auto doTask = [=]() {
+		/* to get clang-format to behave */
+		task(param);
+	};
+	QMetaObject::invokeMethod(App(), "Exec",
+				  wait ? WaitConnection() : Qt::AutoConnection,
+				  Q_ARG(VoidFunc, doTask));
+}
+
 bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
@@ -1337,6 +1348,8 @@ bool OBSApp::OBSInit()
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
+
+	obs_set_ui_task_handler(ui_task_handler);
 
 #ifdef _WIN32
 	bool browserHWAccel =
@@ -1761,6 +1774,10 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 11, 0))
 	QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+#endif
+
+#if !defined(_WIN32) && !defined(__APPLE__) && BROWSER_AVAILABLE
+	setenv("QT_NO_GLIB", "1", true);
 #endif
 
 	QCoreApplication::addLibraryPath(".");
