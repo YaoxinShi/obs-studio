@@ -89,6 +89,77 @@ static std::string fileNameNoExt(const std::string& filepath) {
 	return filepath.substr(0, pos);
 }
 
+void alpha_blend(cv::Mat img, int w, int h, std::vector<std::vector<float>> seg_class, int seg_w, int seg_h)
+{
+	int i, j;
+	float alpha;
+	for (j = 0; j < h; j++)
+	{
+		for (i = 0; i < w; i++)
+		{
+			int r = img.data[(w * j + i) * 3];
+			int g = img.data[(w * j + i) * 3 + 1];
+			int b = img.data[(w * j + i) * 3 + 2];
+
+			int seg_i = i * seg_w / w;
+			int seg_j = j * seg_h / h;
+			alpha = (seg_class[seg_j][seg_i] > 0.5) ? 1.0 : 0.0;
+
+			int seg_r = 152;
+			int seg_g = 251;
+			int seg_b = 152;
+
+			img.data[(w * j + i) * 3] = r * (1 - alpha) + seg_r * alpha;
+			img.data[(w * j + i) * 3 + 1] = g * (1 - alpha) + seg_g * alpha;
+			img.data[(w * j + i) * 3 + 2] = b * (1 - alpha) + seg_b * alpha;
+		}
+	}
+}
+
+void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::vector<float>> seg_class, int seg_w, int seg_h) {
+    float min_area = 300;
+    float min_height = 10;
+
+    cv::Mat mask(h, w, CV_8UC1);
+    int i, j;
+    for (j = 0; j < h; j++)
+    {
+        for (i = 0; i < w; i++)
+        {
+            int seg_i = i * seg_w / w;
+            int seg_j = j * seg_h / h;
+            float seg_cls = seg_class[seg_j][seg_i];
+	    mask.data[w * j + i] = (seg_class[seg_j][seg_i] > 0.5)  ? 1 : 0;
+        }
+    }
+
+    double min_val;
+    double max_val;
+    cv::minMaxLoc(mask, &min_val, &max_val);
+    int max_bbox_idx = static_cast<int>(max_val);
+
+    for (int i = 1; i <= max_bbox_idx; i++) { // loop all seg_class
+        cv::Mat bbox_mask = (mask == i);
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(bbox_mask, contours, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+        for (int j = 0; j < contours.size(); j++) // loop current seg_class's all contour
+        {
+            cv::RotatedRect r = cv::minAreaRect(contours[j]);
+            if (std::min(r.size.width, r.size.height) < min_height)
+            {
+                do_log(LOG_WARNING, "kill rect by height");
+                continue;
+            }
+            if (r.size.area() < min_area)
+            {
+                do_log(LOG_WARNING, "kill rect by area");
+                continue;
+            }
+            bboxes.emplace_back(r.boundingRect());
+        }
+    }
+}
+
 int cnn_init_sod()
 {
     //std::vector<std::string> devices = { "GPU", "CPU" };
@@ -269,57 +340,24 @@ int sod_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             const Blob::Ptr output_blob = infer_request.GetBlob(firstOutputName);
             const auto output_data = output_blob->buffer().as<float*>();
 
-	    size_t N = output_blob->getTensorDesc().getDims().at(0);
-            size_t C, H, W;
+	    size_t N = output_blob->getTensorDesc().getDims().at(0); //65536
+	    size_t M = output_blob->getTensorDesc().getDims().at(1); //2
+	    size_t H = 256; // same as input_size, 256*256=65536
+	    size_t W = 256;
 
-	    size_t output_blob_shape_size = output_blob->getTensorDesc().getDims().size();
-            //slog::info << "Output blob has " << output_blob_shape_size << " dimensions" << slog::endl;
+	    size_t image_stride = W * H;
 
-	    if (output_blob_shape_size == 3) {
-                C = 1;
-                H = output_blob->getTensorDesc().getDims().at(1);
-                W = output_blob->getTensorDesc().getDims().at(2);
-            }
-            else if (output_blob_shape_size == 4) {
-                C = output_blob->getTensorDesc().getDims().at(1);
-                H = output_blob->getTensorDesc().getDims().at(2);
-                W = output_blob->getTensorDesc().getDims().at(3);
-            }
-            else {
-                do_log(LOG_WARNING, "Unexpected output blob shape. Only 4D and 3D output blobs are supported.");
-                assert(0);
-            }
-
-	    size_t image_stride = W * H * C;
-
-	    /** Iterating over all images **/
-            for (size_t image = 0; image < N; ++image) {
-                /** This vector stores pixels classes **/
-                std::vector<std::vector<size_t>> outArrayClasses(H, std::vector<size_t>(W, 0));
-                std::vector<std::vector<float>> outArrayProb(H, std::vector<float>(W, 0.));
-                /** Iterating over each pixel **/
-                for (size_t w = 0; w < W; ++w) {
-                    for (size_t h = 0; h < H; ++h) {
-                        /* number of channels = 1 means that the output is already ArgMax'ed */
-                        if (C == 1) {
-                            outArrayClasses[h][w] = static_cast<size_t>(output_data[image_stride * image + W * h + w]);
-                        }
-                        else {
-                            /** Iterating over each class probability **/
-                            for (size_t ch = 0; ch < C; ++ch) {
-                                auto data = output_data[image_stride * image + W * H * ch + W * h + w];
-                                if (data > outArrayProb[h][w]) {
-                                    outArrayClasses[h][w] = ch;
-                                    outArrayProb[h][w] = data;
-                                }
-                            }
-                        }
-                    }
+            /** This vector stores pixels classes **/
+            std::vector<std::vector<float>> outArrayClasses(H, std::vector<float>(W, 0.));
+            /** Iterating over each pixel **/
+            for (size_t w = 0; w < W; ++w) {
+                for (size_t h = 0; h < H; ++h) {
+                    outArrayClasses[h][w] = output_data[2 * (W * h + w)];
                 }
-                /* alpha blend outArrayProb to demo image*/
-	        //alpha_blend(demo_image, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
-		//maskToBoxes(rects, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
             }
+            /* alpha blend outArrayProb to demo image*/
+	    alpha_blend(demo_image, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
+            maskToBoxes(rects, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
             // -----------------------------------------------------------------------------------------------------
 
             pp_end = std::chrono::steady_clock::now();
