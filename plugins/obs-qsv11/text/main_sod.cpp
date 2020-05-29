@@ -103,11 +103,11 @@ void alpha_blend(cv::Mat img, int w, int h, std::vector<std::vector<float>> seg_
 
 			int seg_i = i * seg_w / w;
 			int seg_j = j * seg_h / h;
-			alpha = (seg_class[seg_j][seg_i] > 0.5) ? 1.0 : 0.0;
+			alpha = (seg_class[seg_j][seg_i] > 0.5) ? 0.5 : 0.0;
 
 			int seg_r = 152;
-			int seg_g = 251;
-			int seg_b = 152;
+			int seg_g = 152;
+			int seg_b = 255; // seems r/g/b channel are inverse
 
 			img.data[(w * j + i) * 3] = r * (1 - alpha) + seg_r * alpha;
 			img.data[(w * j + i) * 3 + 1] = g * (1 - alpha) + seg_g * alpha;
