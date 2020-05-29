@@ -74,6 +74,7 @@ set(text_SOURCES
 	text/image_grabber.cpp
 	text/main_text.cpp
 	text/main_segmentation.cpp
+	text/main_sod.cpp
 	text/text_detection.cpp
 	text/text_recognition.cpp)
 

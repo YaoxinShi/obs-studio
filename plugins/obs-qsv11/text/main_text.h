@@ -6,6 +6,7 @@ extern "C" {
 
 int cnn_init();
 int cnn_init_seg();
+int cnn_init_sod();
 
 #ifdef __cplusplus
 }; //extern "C"
