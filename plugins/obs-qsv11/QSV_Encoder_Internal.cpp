@@ -216,10 +216,13 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t *pParams)
 	    (pParams->nbFrames == 0) &&
 	    (m_ver.Major == 1 && m_ver.Minor >= 31)) {
 		m_mfxEncParams.mfx.LowPower = MFX_CODINGOPTION_ON;
+		blog(LOG_INFO, "\tQSV VDENC");
 		if (pParams->nRateControl == MFX_RATECONTROL_LA_ICQ ||
 		    pParams->nRateControl == MFX_RATECONTROL_LA_HRD ||
 		    pParams->nRateControl == MFX_RATECONTROL_LA)
 			pParams->nRateControl = MFX_RATECONTROL_VBR;
+	} else {
+		blog(LOG_INFO, "\tQSV VME");
 	}
 
 	m_mfxEncParams.mfx.RateControlMethod = pParams->nRateControl;
@@ -288,6 +291,7 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t *pParams)
 		}
 		extendedBuffers[iBuffers++] = (mfxExtBuffer *)&m_co2;
 	}
+	blog(LOG_INFO, "\tQSV lookahead = %d", pParams->nLADEPTH);
 
 	if (m_mfxEncParams.mfx.LowPower == MFX_CODINGOPTION_ON) {
 		memset(&m_co3, 0, sizeof(mfxExtCodingOption3));
@@ -295,8 +299,7 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t *pParams)
 		m_co3.Header.BufferSz = sizeof(m_co3);
 		m_co3.ScenarioInfo = MFX_SCENARIO_GAME_STREAMING;
 		extendedBuffers[iBuffers++] = (mfxExtBuffer *)&m_co3;
-	}
-	else if (pParams->bCQM) {
+	} else if (pParams->bCQM) {
 		if (m_ver.Major == 1 && m_ver.Minor >= 16) {
 			memset(&m_co3, 0, sizeof(mfxExtCodingOption3));
 			m_co3.Header.BufferId = MFX_EXTBUFF_CODING_OPTION3;

@@ -158,8 +158,8 @@ static void obs_qsv_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "icq_quality", 23);
 
 	obs_data_set_default_int(settings, "keyint_sec", 3);
-	obs_data_set_default_string(settings, "latency", "normal");
-	obs_data_set_default_int(settings, "bframes", 3);
+	obs_data_set_default_string(settings, "latency", "ultra-low");
+	obs_data_set_default_int(settings, "bframes", 0);
 	obs_data_set_default_bool(settings, "enhancements", false);
 }
 
