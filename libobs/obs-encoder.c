@@ -22,6 +22,53 @@
 #define set_encoder_active(encoder, val) \
 	os_atomic_set_bool(&encoder->active, val)
 
+char raw_file_name[256] = "C:\\EncoderContent\\in\\Game_Dota2_1920x1080_60fps_600frames.yuv";
+int raw_width = 1920;
+int raw_height = 1080;
+int raw_frame_number = 600;
+int raw_frame_index = 0;
+
+void read_raw_yuv(struct encoder_frame *frame)
+{
+	int w, h;
+	char *pU, *pV, *pUV;
+	int raw_width_uv = raw_width / 2;
+	int raw_height_uv = raw_height / 2;
+	FILE *raw_file_handle = NULL;
+
+	raw_file_handle = fopen(raw_file_name, "rb");
+	if (raw_file_handle != NULL) {
+		//load U
+		fseek(raw_file_handle,
+		      raw_width * raw_height * 3 / 2 * raw_frame_index +
+			      raw_width * raw_height,
+		      0);
+		pU = frame->data[0];
+		fread(pU, 1, raw_width_uv * raw_height_uv, raw_file_handle);
+		//load V
+		pV = frame->data[0] + raw_width_uv * raw_height_uv;
+		fread(pV, 1, raw_width_uv * raw_height_uv, raw_file_handle);
+		//store uv to NV12
+		for (h = 0; h < raw_height_uv; h++) {
+			for (w = 0; w < raw_width_uv; w++) {
+				pUV = frame->data[1] + raw_width_uv * 2 * h +
+				      2 * w;
+				pUV[0] = *(pU + raw_width_uv * h + w);
+				pUV[1] = *(pV + raw_width_uv * h + w);
+			}
+		}
+		//load Y
+		fseek(raw_file_handle,
+		      raw_width * raw_height * 3 / 2 * raw_frame_index, 0);
+		fread(frame->data[0], 1, raw_width * raw_height,
+		      raw_file_handle);
+		fclose(raw_file_handle);
+		raw_frame_index++;
+		if (raw_frame_index >= raw_frame_number)
+			raw_frame_index = 0;
+	}
+}
+
 struct obs_encoder_info *find_encoder(const char *id)
 {
 	for (size_t i = 0; i < obs->encoder_types.num; i++) {
@@ -224,6 +271,7 @@ static void remove_connection(struct obs_encoder *encoder, bool shutdown)
 		audio_output_disconnect(encoder->media, encoder->mixer_idx,
 					receive_audio, encoder);
 	} else {
+		raw_frame_index = 0;
 		if (gpu_encode_available(encoder)) {
 			stop_gpu_encode(encoder);
 		} else {
@@ -1045,6 +1093,8 @@ static void receive_video(void *param, struct video_data *frame)
 
 	enc_frame.frames = 1;
 	enc_frame.pts = encoder->cur_pts;
+
+	read_raw_yuv(&enc_frame);
 
 	if (do_encode(encoder, &enc_frame))
 		encoder->cur_pts += encoder->timebase_num;
