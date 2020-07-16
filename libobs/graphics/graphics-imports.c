@@ -85,6 +85,7 @@ bool load_graphics_imports(struct gs_exports *exports, void *module,
 	GRAPHICS_IMPORT(device_copy_texture_region);
 	GRAPHICS_IMPORT(device_copy_texture);
 	GRAPHICS_IMPORT(device_stage_texture);
+	GRAPHICS_IMPORT(device_update_texture);
 	GRAPHICS_IMPORT(device_begin_frame);
 	GRAPHICS_IMPORT(device_begin_scene);
 	GRAPHICS_IMPORT(device_draw);

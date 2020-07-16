@@ -1749,6 +1749,21 @@ void device_stage_texture(gs_device_t *device, gs_stagesurf_t *dst,
 	}
 }
 
+void device_update_texture(gs_device_t *device, gs_texture_t *dst,
+			  uint8_t *src, uint32_t pitch)
+{
+	try {
+		gs_texture_2d *dst2d = static_cast<gs_texture_2d *>(dst);
+		device->context->UpdateSubresource(dst2d->texture, 0, NULL, src, pitch, 0);
+		//for 1920x1080 NV12 surface, SrcRowPitch is 1920
+		//SrcDepthPitch is 3110400 = 1920*1620 = 1920*(1080+1080/2) (Y and UV)
+		//Here we just set SrcDepthPitch to 0, as NV12 surface's depth is always 1
+		//and SrcDepthPitch is useless.
+	} catch (const char *error) {
+		blog(LOG_ERROR, "UpdateSubresource (D3D11): %s", error);
+	}
+}
+
 extern "C" void reset_duplicators(void);
 
 void device_begin_frame(gs_device_t *device)

@@ -98,6 +98,7 @@ static void *gpu_encode_thread(void *unused)
 			else
 				next_key++;
 
+			//blog(LOG_ERROR, "====== gpu_encode_thread, send tex=%p to encoder", tf.tex);
 			success = encoder->info.encode_texture(
 				encoder->context.data, tf.handle,
 				encoder->cur_pts, lock_key, &next_key, &pkt,

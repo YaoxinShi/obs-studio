@@ -1737,6 +1737,16 @@ void gs_stage_texture(gs_stagesurf_t *dst, gs_texture_t *src)
 	graphics->exports.device_stage_texture(graphics->device, dst, src);
 }
 
+void gs_update_texture(gs_texture_t *dst, uint8_t *src, uint32_t pitch)
+{
+	graphics_t *graphics = thread_graphics;
+
+	if (!gs_valid("gs_update_texture"))
+		return;
+
+	graphics->exports.device_update_texture(graphics->device, dst, src, pitch);
+}
+
 void gs_begin_frame(void)
 {
 	graphics_t *graphics = thread_graphics;

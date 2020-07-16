@@ -382,6 +382,56 @@ static inline void stage_output_texture(struct obs_core_video *video,
 	profile_end(stage_output_texture_name);
 }
 
+void read_raw_yuv_gpu(struct obs_core_video *video, gs_texture_t *tex)
+{
+	int w, h;
+	char *pU, *pV, *pUV, *pY;
+	int linesize, linesize_uv;
+	int raw_width_uv = raw_width / 2;
+	int raw_height_uv = raw_height / 2;
+	FILE *raw_file_handle = NULL;
+	char *buf = calloc(raw_width*raw_height*3/2, 1);
+
+	raw_file_handle = fopen(raw_file_name, "rb");
+	if (raw_file_handle != NULL) {
+		//load U
+		fseek(raw_file_handle,
+		      raw_width * raw_height * 3 / 2 * raw_frame_index +
+			      raw_width * raw_height,
+		      0);
+		pU = buf;
+		fread(pU, 1, raw_width_uv * raw_height_uv, raw_file_handle);
+		//load V
+		pV = buf + raw_width_uv * raw_height_uv;
+		fread(pV, 1, raw_width_uv * raw_height_uv, raw_file_handle);
+		//store uv to NV12
+		for (h = 0; h < raw_height_uv; h++) {
+			for (w = 0; w < raw_width_uv; w++) {
+				char *p = buf + raw_width * raw_height + raw_width_uv * 2 * h + 2 * w;
+				p[0] = *(pU + raw_width_uv * h + w);
+				p[1] = *(pV + raw_width_uv * h + w);
+			}
+		}
+		//load Y
+		fseek(raw_file_handle,
+		      raw_width * raw_height * 3 / 2 * raw_frame_index, 0);
+		fread(buf, 1, raw_width * raw_height, raw_file_handle);
+		fclose(raw_file_handle);
+
+		//blog(LOG_ERROR, "=== copy yuv frame %d to tex=%p",
+		//	raw_frame_index, tex);
+
+		raw_frame_index++;
+		if (raw_frame_index >= raw_frame_number)
+			raw_frame_index = 0;
+	}
+
+	gs_enter_context(video->graphics);
+	gs_update_texture(tex, buf, raw_width);
+	gs_leave_context(video->graphics);
+	free(buf);
+}
+
 #ifdef _WIN32
 static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 			       struct obs_vframe_info *vframe_info)
@@ -400,6 +450,7 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 			return false;
 		}
 
+		blog(LOG_ERROR, "=== queue_frame, duplicate"); //never come here
 		tf->count++;
 		os_sem_post(video->gpu_encode_semaphore);
 		goto finish;
@@ -429,6 +480,7 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 		tf.tex = tex;
 		tf.tex_uv = tex_uv;
 	}
+	read_raw_yuv_gpu(video, tf.tex);
 
 	tf.count = 1;
 	tf.timestamp = vframe_info->timestamp;
