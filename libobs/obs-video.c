@@ -427,6 +427,7 @@ void read_raw_yuv_gpu(struct obs_core_video *video, gs_texture_t *tex)
 	}
 
 	gs_enter_context(video->graphics);
+	// We can also use staging surface + CopyResource/CopySubresourceRegion API. (need export a new gs function to copy staging surface back to default surface)
 	gs_update_texture(tex, buf, raw_width);
 	gs_leave_context(video->graphics);
 	free(buf);
