@@ -173,11 +173,11 @@ int cnn_init_sod()
 	//!!! e.g. if openvino_2019.3.379 installed, need copy obs-binary-release_2019R3.1_release/debug
         ie.GetVersions("GPU");
 
-        std::string model_path = ".\\BDMP.xml";
+        std::string model_path = ".\\BDMP_FP16.xml";
         FILE *fh = fopen(model_path.c_str(), "r");
         if (fh == NULL)
         {
-            model_path = "c:\\tmp\\BDMP.xml";
+            model_path = "c:\\tmp\\BDMP_FP16.xml";
             fh = fopen(model_path.c_str(), "r");
             if (fh == NULL)
             {
