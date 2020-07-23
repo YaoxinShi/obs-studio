@@ -168,6 +168,9 @@ int cnn_init_sod()
     {
         do_log(LOG_WARNING, "Init plugins");
 
+	//!!! if below line fail, please check OpenVINO version in C:\Program Files (x86)\IntelSWTools\
+	//!!! make sure it matches the obs-binary-release_*** you copy
+	//!!! e.g. if openvino_2019.3.379 installed, need copy obs-binary-release_2019R3.1_release/debug
         ie.GetVersions("GPU");
 
         std::string model_path = ".\\BDMP.xml";
@@ -213,6 +216,10 @@ int cnn_init_sod()
                 assert(0);
             }
             auto inputInfoItem = *inputInfo.begin();
+
+            //!!! if below line fail, please check OpenVINO version in C:\Program Files (x86)\IntelSWTools\
+            //!!! make sure it matches the obs-binary-release_*** you copy
+	    //!!! e.g. if openvino_2019.3.379 installed, need copy obs-binary-release_2019R3.1_release/debug
             network_sod.setBatchSize(1);
             inputInfoItem.second->setPrecision(Precision::U8);
             // --------------------------- Prepare output blobs ----------------------------------------------------
