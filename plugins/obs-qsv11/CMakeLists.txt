@@ -123,9 +123,21 @@ target_link_libraries(obs-qsv11
 	${obs-qsv11_PLATFORM_DEPS}
 	${OpenCV_LIBS}
     debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engined.lib
-    debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/tbb_debug.lib
+    debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engine_c_apid.lib
+	debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engine_ir_readerd.lib
+	debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engine_legacyd.lib
+	debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engine_lp_transformationsd.lib
+	debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engine_onnx_readerd.lib
+	debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engine_preprocd.lib
+	debug ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Debug/inference_engine_transformationsd.lib
     optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine.lib
-	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/tbb.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine_c_api.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine_ir_reader.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine_legacy.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine_lp_transformations.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine_onnx_reader.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine_preproc.lib
+	optimized ${OpenCV_INCLUDE_DIRS}/../../deployment_tools/inference_engine/lib/intel64/Release/inference_engine_transformations.lib
 	)
 
 target_compile_definitions(obs-qsv11 PRIVATE DX11_D3D)

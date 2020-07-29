@@ -14,7 +14,7 @@
 #include <vector>
 
 #include <opencv2/opencv.hpp>
-#include <ext_list.hpp>
+//#include <ext_list.hpp>
 #include <inference_engine.hpp>
 
 #include "cnn.hpp"
