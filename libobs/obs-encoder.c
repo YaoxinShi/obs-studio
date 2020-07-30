@@ -35,12 +35,18 @@ void read_raw_yuv(struct encoder_frame *frame)
 	int raw_width_uv = raw_width / 2;
 	int raw_height_uv = raw_height / 2;
 	FILE *raw_file_handle = NULL;
+	int file_size, file_frame_total, file_frame_index;
 
 	raw_file_handle = fopen(raw_file_name, "rb");
+	fseek(raw_file_handle, 0L, SEEK_END);
+	file_size = ftell(raw_file_handle);
+	file_frame_total = file_size / (raw_width * raw_height * 3 / 2);
+	file_frame_index = raw_frame_index % file_frame_total;
+
 	if (raw_file_handle != NULL) {
 		//load U
 		fseek(raw_file_handle,
-		      raw_width * raw_height * 3 / 2 * raw_frame_index +
+		      raw_width * raw_height * 3 / 2 * file_frame_index +
 			      raw_width * raw_height,
 		      0);
 		pU = frame->data[0];
@@ -59,13 +65,11 @@ void read_raw_yuv(struct encoder_frame *frame)
 		}
 		//load Y
 		fseek(raw_file_handle,
-		      raw_width * raw_height * 3 / 2 * raw_frame_index, 0);
+		      raw_width * raw_height * 3 / 2 * file_frame_index, 0);
 		fread(frame->data[0], 1, raw_width * raw_height,
 		      raw_file_handle);
 		fclose(raw_file_handle);
 		raw_frame_index++;
-		if (raw_frame_index >= raw_frame_number)
-			raw_frame_index = 0;
 	}
 }
 

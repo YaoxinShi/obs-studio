@@ -391,12 +391,18 @@ void read_raw_yuv_gpu(struct obs_core_video *video, gs_texture_t *tex)
 	int raw_height_uv = raw_height / 2;
 	FILE *raw_file_handle = NULL;
 	char *buf = calloc(raw_width*raw_height*3/2, 1);
+	int file_size, file_frame_total, file_frame_index;
 
 	raw_file_handle = fopen(raw_file_name, "rb");
+	fseek(raw_file_handle, 0L, SEEK_END);
+	file_size = ftell(raw_file_handle);
+	file_frame_total = file_size / (raw_width * raw_height * 3 / 2);
+	file_frame_index = raw_frame_index % file_frame_total;
+
 	if (raw_file_handle != NULL) {
 		//load U
 		fseek(raw_file_handle,
-		      raw_width * raw_height * 3 / 2 * raw_frame_index +
+		      raw_width * raw_height * 3 / 2 * file_frame_index +
 			      raw_width * raw_height,
 		      0);
 		pU = buf;
@@ -414,7 +420,7 @@ void read_raw_yuv_gpu(struct obs_core_video *video, gs_texture_t *tex)
 		}
 		//load Y
 		fseek(raw_file_handle,
-		      raw_width * raw_height * 3 / 2 * raw_frame_index, 0);
+		      raw_width * raw_height * 3 / 2 * file_frame_index, 0);
 		fread(buf, 1, raw_width * raw_height, raw_file_handle);
 		fclose(raw_file_handle);
 
@@ -422,8 +428,6 @@ void read_raw_yuv_gpu(struct obs_core_video *video, gs_texture_t *tex)
 		//	raw_frame_index, tex);
 
 		raw_frame_index++;
-		if (raw_frame_index >= raw_frame_number)
-			raw_frame_index = 0;
 	}
 
 	gs_enter_context(video->graphics);
