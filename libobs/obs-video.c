@@ -455,7 +455,9 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 			return false;
 		}
 
-		blog(LOG_ERROR, "=== queue_frame, duplicate"); //never come here
+		blog(LOG_ERROR, "=== queue_frame, duplicate"); //if come here, means frame being duplicated
+		read_raw_yuv_gpu(video, tf->tex);
+		gs_texture_get_shared_handle(tf->tex); //similar to flush, in order to make sure gs_update_texture take effects
 		tf->count++;
 		os_sem_post(video->gpu_encode_semaphore);
 		goto finish;
