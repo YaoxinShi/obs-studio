@@ -973,6 +973,16 @@ void full_stop(struct obs_encoder *encoder)
 void send_off_encoder_packet(obs_encoder_t *encoder, bool success,
 			     bool received, struct encoder_packet *pkt)
 {
+	// This is only for debug/quality compare.
+	// It stops encoder when frame number is reached.
+	// It will generate an encoder error message box. You can just ignore it.
+	// Due to file write latency, raw_frame_number is not euqal to the frame number in bit stream.
+	// You can increase raw_frame_number to meet the  encode frame number requirement.
+	if (raw_frame_index > raw_frame_number) {
+		//full_stop(encoder);
+		//return;
+	}
+
 	if (!success) {
 		blog(LOG_ERROR, "Error encoding with encoder '%s'",
 		     encoder->context.name);
