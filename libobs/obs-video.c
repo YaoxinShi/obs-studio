@@ -384,6 +384,9 @@ static inline void stage_output_texture(struct obs_core_video *video,
 
 void read_raw_yuv_gpu(struct obs_core_video *video, gs_texture_t *tex)
 {
+	if (!raw_enable)
+		return;
+
 	int w, h;
 	char *pU, *pV, *pUV, *pY;
 	int linesize, linesize_uv;

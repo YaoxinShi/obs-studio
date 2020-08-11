@@ -1137,6 +1137,7 @@ extern bool obs_service_initialize(struct obs_service *service,
 
 void obs_service_destroy(obs_service_t *service);
 
+extern bool raw_enable;
 extern char raw_file_name[256];
 extern int raw_width;
 extern int raw_height;

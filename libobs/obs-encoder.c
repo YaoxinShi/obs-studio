@@ -22,14 +22,19 @@
 #define set_encoder_active(encoder, val) \
 	os_atomic_set_bool(&encoder->active, val)
 
-char raw_file_name[256] = "C:\\EncoderContent\\in\\Game_Dota2_1920x1080_60fps_600frames.yuv";
+bool raw_enable = false;
+char raw_file_name[256] = "C:\\EncoderContent\\in\\Game_forza_1920x1080_2_60fps_600frames.yuv";
 int raw_width = 1920;
 int raw_height = 1080;
-int raw_frame_number = 600;
+int raw_frame_number = 610;
 int raw_frame_index = 0;
+bool raw_loop_mode = false;
 
 void read_raw_yuv(struct encoder_frame *frame)
 {
+	if (!raw_enable)
+		return;
+
 	int w, h;
 	char *pU, *pV, *pUV;
 	int raw_width_uv = raw_width / 2;
@@ -725,6 +730,17 @@ enum obs_encoder_type obs_get_encoder_type(const char *id)
 	return info ? info->type : OBS_ENCODER_AUDIO;
 }
 
+void obs_encoder_set_yuv(obs_encoder_t *encoder, bool YUVEnable, const char * YUVFilePath,
+	int YUVWidth, int YUVHeight, bool YUVLoopMode, int YUVFrame)
+{
+	raw_enable = YUVEnable;
+	strcpy(raw_file_name, YUVFilePath);
+	raw_width = YUVWidth;
+	raw_height = YUVHeight;
+	raw_loop_mode = YUVLoopMode;
+	raw_frame_number = YUVFrame;
+}
+
 void obs_encoder_set_scaled_size(obs_encoder_t *encoder, uint32_t width,
 				 uint32_t height)
 {
@@ -978,9 +994,9 @@ void send_off_encoder_packet(obs_encoder_t *encoder, bool success,
 	// It will generate an encoder error message box. You can just ignore it.
 	// Due to file write latency, raw_frame_number is not euqal to the frame number in bit stream.
 	// You can increase raw_frame_number to meet the  encode frame number requirement.
-	if (raw_frame_index > raw_frame_number) {
-		//full_stop(encoder);
-		//return;
+	if ((raw_frame_index > raw_frame_number) && (!raw_loop_mode)) {
+		full_stop(encoder);
+		return;
 	}
 
 	if (!success) {
