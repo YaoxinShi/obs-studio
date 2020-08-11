@@ -162,6 +162,23 @@ static void obs_qsv_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "keyint_sec", 3);
 	obs_data_set_default_int(settings, "bframes", 3);
 	obs_data_set_default_bool(settings, "mbbrc", true);
+
+	obs_data_set_default_int(settings, "left0", 0);
+	obs_data_set_default_int(settings, "top0", 0);
+	obs_data_set_default_int(settings, "right0", 0);
+	obs_data_set_default_int(settings, "bottom0", 0);
+	obs_data_set_default_int(settings, "left1", 0);
+	obs_data_set_default_int(settings, "top1", 0);
+	obs_data_set_default_int(settings, "right1", 0);
+	obs_data_set_default_int(settings, "bottom1", 0);
+	obs_data_set_default_int(settings, "left2", 0);
+	obs_data_set_default_int(settings, "top2", 0);
+	obs_data_set_default_int(settings, "right2", 0);
+	obs_data_set_default_int(settings, "bottom2", 0);
+	obs_data_set_default_int(settings, "left3", 0);
+	obs_data_set_default_int(settings, "top3", 0);
+	obs_data_set_default_int(settings, "right3", 0);
+	obs_data_set_default_int(settings, "bottom3", 0);
 }
 
 static inline void add_strings(obs_property_t *list, const char *const *strings)
@@ -318,6 +335,26 @@ static obs_properties_t *obs_qsv_props(void *unused)
 
 	obs_properties_add_bool(props, "CQM", "Customized quantization matrix");
 
+	obs_properties_add_int(props, "left0", "ROI 0, left  ", 0, 2000, 1);
+	obs_properties_add_int(props, "top0", "ROI 0, top   ", 0, 2000, 1);
+	obs_properties_add_int(props, "right0", "ROI 0, right ", 0, 2000, 1);
+	obs_properties_add_int(props, "bottom0", "ROI 0, bottom", 0, 2000, 1);
+
+	obs_properties_add_int(props, "left1", "ROI 1, left  ", 0, 2000, 1);
+	obs_properties_add_int(props, "top1", "ROI 1, top   ", 0, 2000, 1);
+	obs_properties_add_int(props, "right1", "ROI 1, right ", 0, 2000, 1);
+	obs_properties_add_int(props, "bottom1", "ROI 1, bottom", 0, 2000, 1);
+
+	obs_properties_add_int(props, "left2", "ROI 2, left  ", 0, 2000, 1);
+	obs_properties_add_int(props, "top2", "ROI 2, top   ", 0, 2000, 1);
+	obs_properties_add_int(props, "right2", "ROI 2, right ", 0, 2000, 1);
+	obs_properties_add_int(props, "bottom2", "ROI 2, bottom", 0, 2000, 1);
+
+	obs_properties_add_int(props, "left3", "ROI 3, left  ", 0, 2000, 1);
+	obs_properties_add_int(props, "top3", "ROI 3, top   ", 0, 2000, 1);
+	obs_properties_add_int(props, "right3", "ROI 3, right ", 0, 2000, 1);
+	obs_properties_add_int(props, "bottom3", "ROI 3, bottom", 0, 2000, 1);
+
 	return props;
 }
 
@@ -430,6 +467,26 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	obsqsv->params.nKeyIntSec = (mfxU16)keyint_sec;
 	obsqsv->params.nICQQuality = (mfxU16)icq_quality;
 	obsqsv->params.bMBBRC = mbbrc;
+
+	obsqsv->params.nLeft[0] = (int)obs_data_get_int(settings, "left0");
+	obsqsv->params.nTop[0] = (int)obs_data_get_int(settings, "top0");
+	obsqsv->params.nRight[0] = (int)obs_data_get_int(settings, "right0");
+	obsqsv->params.nBottom[0] = (int)obs_data_get_int(settings, "bottom0");
+
+	obsqsv->params.nLeft[1] = (int)obs_data_get_int(settings, "left1");
+	obsqsv->params.nTop[1] = (int)obs_data_get_int(settings, "top1");
+	obsqsv->params.nRight[1] = (int)obs_data_get_int(settings, "right1");
+	obsqsv->params.nBottom[1] = (int)obs_data_get_int(settings, "bottom1");
+
+	obsqsv->params.nLeft[2] = (int)obs_data_get_int(settings, "left2");
+	obsqsv->params.nTop[2] = (int)obs_data_get_int(settings, "top2");
+	obsqsv->params.nRight[2] = (int)obs_data_get_int(settings, "right2");
+	obsqsv->params.nBottom[2] = (int)obs_data_get_int(settings, "bottom2");
+
+	obsqsv->params.nLeft[3] = (int)obs_data_get_int(settings, "left3");
+	obsqsv->params.nTop[3] = (int)obs_data_get_int(settings, "top3");
+	obsqsv->params.nRight[3] = (int)obs_data_get_int(settings, "right3");
+	obsqsv->params.nBottom[3] = (int)obs_data_get_int(settings, "bottom3");
 
 	info("settings:\n\trate_control:   %s", rate_control);
 

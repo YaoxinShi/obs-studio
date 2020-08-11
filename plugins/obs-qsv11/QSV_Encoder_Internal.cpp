@@ -85,13 +85,6 @@ QSV_Encoder_Internal::QSV_Encoder_Internal(mfxIMPL &impl, mfxVersion &version)
 	mfxIMPL tempImpl;
 	mfxStatus sts;
 
-	struct Rect r;
-	r.Left = 640;
-	r.Top = 360;
-	r.Right = 1280;
-	r.Bottom = 720;
-	rects_no_rotate.push_back(r);
-
 	m_bIsWindows8OrGreater = IsWindows8OrGreater();
 	m_bUseD3D11 = false;
 	m_bD3D9HACK = true;
@@ -276,6 +269,19 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t *pParams)
 		if (pParams->nbFrames > 1)
 			m_co2.BRefType = MFX_B_REF_PYRAMID;
 		extendedBuffers[iBuffers++] = (mfxExtBuffer *)&m_co2;
+	}
+
+	rects_no_rotate.clear();
+	for (int i = 0; i < 4; i++) {
+		if ((pParams->nRight[i] > pParams->nLeft[i]) &&
+		    (pParams->nBottom[i] > pParams->nTop[i])) {
+			struct Rect r;
+			r.Left = pParams->nLeft[i];
+			r.Top = pParams->nTop[i];
+			r.Right = pParams->nRight[i];
+			r.Bottom = pParams->nBottom[i];
+			rects_no_rotate.push_back(r);
+		}
 	}
 
 	if (pParams->bCQM) {

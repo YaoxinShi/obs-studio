@@ -104,6 +104,10 @@ typedef struct {
 	mfxU16 nICQQuality;
 	bool bMBBRC;
 	bool bCQM;
+	mfxU16 nLeft[4];
+	mfxU16 nTop[4];
+	mfxU16 nRight[4];
+	mfxU16 nBottom[4];
 } qsv_param_t;
 
 enum qsv_cpu_platform {
