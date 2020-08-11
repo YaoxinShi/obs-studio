@@ -58,6 +58,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mfxvideo++.h"
 #include "QSV_Encoder.h"
 #include "common_utils.h"
+#include <vector>
+
+struct Rect {
+	mfxU32 Left;
+	mfxU32 Top;
+	mfxU32 Right;
+	mfxU32 Bottom;
+};
 
 class QSV_Encoder_Internal {
 public:
@@ -116,4 +124,7 @@ private:
 	static mfxU16 g_numEncodersOpen;
 	static mfxHDL
 		g_DX_Handle; // we only want one handle for all instances to use;
+	mfxExtEncoderROI m_ROI;
+	mfxEncodeCtrl m_ctrl;
+	std::vector<struct Rect> rects_no_rotate;
 };

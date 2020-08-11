@@ -85,6 +85,13 @@ QSV_Encoder_Internal::QSV_Encoder_Internal(mfxIMPL &impl, mfxVersion &version)
 	mfxIMPL tempImpl;
 	mfxStatus sts;
 
+	struct Rect r;
+	r.Left = 640;
+	r.Top = 360;
+	r.Right = 1280;
+	r.Bottom = 720;
+	rects_no_rotate.push_back(r);
+
 	m_bIsWindows8OrGreater = IsWindows8OrGreater();
 	m_bUseD3D11 = false;
 	m_bD3D9HACK = true;
@@ -546,8 +553,32 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 	}
 
 	for (;;) {
+		memset(&m_ctrl, 0, sizeof(mfxEncodeCtrl));
+		if (rects_no_rotate.size() > 0) {
+			memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
+			m_ROI.Header.BufferId = MFX_EXTBUFF_ENCODER_ROI;
+			m_ROI.Header.BufferSz = sizeof(m_ROI);
+
+			m_ROI.NumROI = rects_no_rotate.size();
+			m_ROI.ROIMode = MFX_ROI_MODE_QP_DELTA;
+			for (int i = 0; i < rects_no_rotate.size(); i++) {
+				Rect rect = rects_no_rotate[i];
+				m_ROI.ROI[i].Left = rect.Left;
+				m_ROI.ROI[i].Top = rect.Top;
+				m_ROI.ROI[i].Right = rect.Right;
+				m_ROI.ROI[i].Bottom = rect.Bottom;
+				m_ROI.ROI[i].DeltaQP = -6;
+			}
+
+			static mfxExtBuffer *extendedBuffers;
+			extendedBuffers = (mfxExtBuffer *)&m_ROI;
+
+			m_ctrl.NumExtParam = 1;
+			m_ctrl.ExtParam = &extendedBuffers;
+		}
+
 		// Encode a frame asynchronously (returns immediately)
-		sts = m_pmfxENC->EncodeFrameAsync(NULL, pSurface,
+		sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface,
 						  &m_pTaskPool[nTaskIdx].mfxBS,
 						  &m_pTaskPool[nTaskIdx].syncp);
 
