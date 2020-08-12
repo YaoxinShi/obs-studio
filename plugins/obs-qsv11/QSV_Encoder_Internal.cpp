@@ -283,6 +283,23 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t *pParams)
 			rects_no_rotate.push_back(r);
 		}
 	}
+	if (rects_no_rotate.size() > 0) {
+		memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
+		m_ROI.Header.BufferId = MFX_EXTBUFF_ENCODER_ROI;
+		m_ROI.Header.BufferSz = sizeof(m_ROI);
+
+		m_ROI.NumROI = rects_no_rotate.size();
+		m_ROI.ROIMode = MFX_ROI_MODE_QP_DELTA;
+		for (int i = 0; i < rects_no_rotate.size(); i++) {
+			Rect rect = rects_no_rotate[i];
+			m_ROI.ROI[i].Left = rect.Left;
+			m_ROI.ROI[i].Top = rect.Top;
+			m_ROI.ROI[i].Right = rect.Right;
+			m_ROI.ROI[i].Bottom = rect.Bottom;
+			m_ROI.ROI[i].DeltaQP = -6;
+		}
+		extendedBuffers[iBuffers++] = (mfxExtBuffer *)&m_ROI;
+	}
 
 	if (pParams->bCQM) {
 		if (m_ver.Major == 1 && m_ver.Minor >= 16) {
@@ -559,29 +576,22 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY,
 	}
 
 	for (;;) {
+		// For per-frame ROI update.
+		// This part is not needed is no per-frame ROI change.
 		memset(&m_ctrl, 0, sizeof(mfxEncodeCtrl));
-		if (rects_no_rotate.size() > 0) {
-			memset(&m_ROI, 0, sizeof(mfxExtEncoderROI));
-			m_ROI.Header.BufferId = MFX_EXTBUFF_ENCODER_ROI;
-			m_ROI.Header.BufferSz = sizeof(m_ROI);
-
-			m_ROI.NumROI = rects_no_rotate.size();
-			m_ROI.ROIMode = MFX_ROI_MODE_QP_DELTA;
-			for (int i = 0; i < rects_no_rotate.size(); i++) {
-				Rect rect = rects_no_rotate[i];
-				m_ROI.ROI[i].Left = rect.Left;
-				m_ROI.ROI[i].Top = rect.Top;
-				m_ROI.ROI[i].Right = rect.Right;
-				m_ROI.ROI[i].Bottom = rect.Bottom;
-				m_ROI.ROI[i].DeltaQP = -6;
-			}
-
-			static mfxExtBuffer *extendedBuffers;
-			extendedBuffers = (mfxExtBuffer *)&m_ROI;
-
-			m_ctrl.NumExtParam = 1;
-			m_ctrl.ExtParam = &extendedBuffers;
+		static mfxExtBuffer *extendedBuffers[3];
+		int iBuffers = 0;
+		if (m_co2.Header.BufferId == MFX_EXTBUFF_CODING_OPTION2) {
+			extendedBuffers[iBuffers++] = (mfxExtBuffer *)&m_co2;
 		}
+		if (m_ROI.Header.BufferId == MFX_EXTBUFF_ENCODER_ROI) {
+			extendedBuffers[iBuffers++] = (mfxExtBuffer *)&m_ROI;
+		}
+		if (m_co3.Header.BufferId == MFX_EXTBUFF_CODING_OPTION3) {
+			extendedBuffers[iBuffers++] = (mfxExtBuffer *)&m_co3;
+		}
+		m_ctrl.NumExtParam = iBuffers;
+		m_ctrl.ExtParam = extendedBuffers;
 
 		// Encode a frame asynchronously (returns immediately)
 		sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface,
