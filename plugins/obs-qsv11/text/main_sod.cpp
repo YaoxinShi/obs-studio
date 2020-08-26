@@ -188,6 +188,25 @@ void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::v
             bboxes.emplace_back(r.boundingRect());
         }
     }
+
+    //sort based on Rect's size
+    cv::Rect tmp;
+    int sizeV = bboxes.size();
+    for (int i = 1; i < sizeV; i++) {
+        for (int j = sizeV - 1; j >= i; j--) {
+            if (bboxes[j].area() > bboxes[j - 1].area()) {
+                tmp = bboxes[j - 1];
+                bboxes[j - 1] = bboxes[j];
+                bboxes[j] = tmp;
+            }
+        }
+    }
+
+    //only return 4 biggest boxes
+    if (sizeV > 4)
+    {
+	    bboxes.erase(bboxes.begin() + 4, bboxes.begin() + sizeV);
+    }
 }
 
 int cnn_init_sod()
