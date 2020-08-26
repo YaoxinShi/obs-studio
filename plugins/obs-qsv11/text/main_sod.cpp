@@ -225,7 +225,7 @@ int cnn_init_sod()
 #if ALG_BDMP
         std::string model_path = ".\\BDMP_FP16.xml";
 #elif ALG_CSNET
-	std::string model_path = ".\\CSNet400_FP32.xml";
+	std::string model_path = ".\\CSNet400_FP16.xml";
 #else // default
 	assert(0); //not set CNN model
 #endif
