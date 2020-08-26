@@ -35,7 +35,7 @@
 #if ALG_BDMP
 #define SALIENT_PIXEL_THRESHOLD 0.5
 #elif ALG_CSNET
-#define SALIENT_PIXEL_THRESHOLD 0.2
+#define SALIENT_PIXEL_THRESHOLD 0.7
 #else // default
 #define SALIENT_PIXEL_THRESHOLD 0.5
 #endif
@@ -138,8 +138,8 @@ void alpha_blend(cv::Mat img, int w, int h, std::vector<std::vector<float>> seg_
 }
 
 void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::vector<float>> seg_class, int seg_w, int seg_h) {
-    float min_area = 300;
-    float min_height = 10;
+    float min_area = 1000;
+    float min_height = 20;
 
     cv::Mat mask(h, w, CV_8UC1);
     int i, j;
@@ -162,7 +162,16 @@ void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::v
     for (int i = 1; i <= max_bbox_idx; i++) { // loop all seg_class
         cv::Mat bbox_mask = (mask == i);
         std::vector<std::vector<cv::Point>> contours;
-        cv::findContours(bbox_mask, contours, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+	//mode:
+	//	CV_RETR_EXTERNAL - detect only external edge
+	//	CV_RETR_LIST - detect both external and internal edge, not build hierarchy
+	//	CV_RETR_CCOMP - detect both external and internal edge, build 2-level hierarchy
+	//	CV_RETR_TREE - detect both external and internal edge, build all-level hierarchy
+	//method:
+	//	CV_CHAIN_APPROX_NONE - save all pixel of the contour
+	//	CV_CHAIN_APPROX_SIMPLE - save only inflection pixel of the contour
+	//	CV_CHAIN_APPROX_TC89_L1 / CV_CHAIN_APPROX_TC89_KCOS - Teh-Chin chain approximate
+        cv::findContours(bbox_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
         for (int j = 0; j < contours.size(); j++) // loop current seg_class's all contour
         {
             cv::RotatedRect r = cv::minAreaRect(contours[j]);
@@ -197,7 +206,7 @@ int cnn_init_sod()
 #if ALG_BDMP
         std::string model_path = ".\\BDMP_FP16.xml";
 #elif ALG_CSNET
-	std::string model_path = ".\\CSNet.xml";
+	std::string model_path = ".\\CSNet400_FP32.xml";
 #else // default
 	assert(0); //not set CNN model
 #endif
