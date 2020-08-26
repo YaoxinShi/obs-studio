@@ -29,6 +29,27 @@
 #define SHOW_CV_OUTPUT_IMAGE 1
 #define USE_OBS_INPUT 1
 
+#define ALG_BDMP 0
+#define ALG_CSNET 1
+
+#if ALG_BDMP
+#define SALIENT_PIXEL_THRESHOLD 0.5
+#elif ALG_CSNET
+#define SALIENT_PIXEL_THRESHOLD 0.2
+#else // default
+#define SALIENT_PIXEL_THRESHOLD 0.5
+#endif
+
+float sigmoid(float x)
+//         1
+// y = ________
+//           -x
+//      1 + e
+{
+	return (1. / (1. + exp(-x)));
+}
+
+
 using namespace InferenceEngine;
 
 // OpenVINO internal
@@ -103,7 +124,7 @@ void alpha_blend(cv::Mat img, int w, int h, std::vector<std::vector<float>> seg_
 
 			int seg_i = i * seg_w / w;
 			int seg_j = j * seg_h / h;
-			alpha = (seg_class[seg_j][seg_i] > 0.5) ? 0.5 : 0.0;
+			alpha = (seg_class[seg_j][seg_i] > SALIENT_PIXEL_THRESHOLD) ? 0.5 : 0.0;
 
 			int seg_r = 152;
 			int seg_g = 152;
@@ -129,7 +150,7 @@ void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::v
             int seg_i = i * seg_w / w;
             int seg_j = j * seg_h / h;
             float seg_cls = seg_class[seg_j][seg_i];
-	    mask.data[w * j + i] = (seg_class[seg_j][seg_i] > 0.5)  ? 1 : 0;
+	    mask.data[w * j + i] = (seg_class[seg_j][seg_i] > SALIENT_PIXEL_THRESHOLD)  ? 1 : 0;
         }
     }
 
@@ -173,7 +194,13 @@ int cnn_init_sod()
 	//!!! e.g. if openvino_2019.3.379 installed, need copy obs-binary-release_2019R3.1_release/debug
         ie.GetVersions("GPU");
 
+#if ALG_BDMP
         std::string model_path = ".\\BDMP_FP16.xml";
+#elif ALG_CSNET
+	std::string model_path = ".\\CSNet.xml";
+#else // default
+	assert(0); //not set CNN model
+#endif
         FILE *fh = fopen(model_path.c_str(), "r");
         if (fh == NULL)
         {
@@ -221,7 +248,14 @@ int cnn_init_sod()
             //!!! make sure it matches the obs-binary-release_*** you copy
 	    //!!! e.g. if openvino_2019.3.379 installed, need copy obs-binary-release_2019R3.1_release/debug
             network_sod.setBatchSize(1);
+#if ALG_BDMP
             inputInfoItem.second->setPrecision(Precision::U8);
+#elif ALG_CSNET
+	    inputInfoItem.second->setPrecision(Precision::FP32);
+#else // default
+	    inputInfoItem.second->setPrecision(Precision::U8);
+#endif
+
             // --------------------------- Prepare output blobs ----------------------------------------------------
             OutputsDataMap outputInfo(network_sod.getOutputsInfo());
             for (auto& item : outputInfo) {
@@ -317,14 +351,26 @@ int sod_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
 		/** Fill input tensor with images. First r channel, then g and b channels **/
                 size_t num_channels = input->getTensorDesc().getDims()[1];
                 size_t image_size = input->getTensorDesc().getDims()[3] * input->getTensorDesc().getDims()[2];
+#if ALG_BDMP
 		auto data = input->buffer().as<PrecisionTrait<Precision::U8>::value_type*>();
+#elif ALG_CSNET
+		auto data = input->buffer().as<PrecisionTrait<Precision::FP32>::value_type*>();
+#else // default
+		auto data = input->buffer().as<PrecisionTrait<Precision::U8>::value_type*>();
+#endif
 
 		/** Iterate over all pixel in image (r,g,b) **/
                 for (size_t pid = 0; pid < image_size; pid++) {
                     /** Iterate over all channels **/
                     for (size_t ch = 0; ch < num_channels; ++ch) {
                         /**          [images stride + channels stride + pixel id ] all in bytes            **/
+#if ALG_BDMP
                         data[ch * image_size + pid] = inference_image.data[pid * num_channels + ch];
+#elif ALG_CSNET
+                        data[ch * image_size + pid] = inference_image.data[pid * num_channels + ch] / 255.0; //normalized FP32
+#else // default
+                        data[ch * image_size + pid] = inference_image.data[pid * num_channels + ch];
+#endif
                     }
                 }
             }
@@ -347,6 +393,7 @@ int sod_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
             const Blob::Ptr output_blob = infer_request.GetBlob(firstOutputName);
             const auto output_data = output_blob->buffer().as<float*>();
 
+#if ALG_BDMP
 	    size_t N = output_blob->getTensorDesc().getDims().at(0); //65536
 	    size_t M = output_blob->getTensorDesc().getDims().at(1); //2
 	    size_t H = 256; // same as input_size, 256*256=65536
@@ -362,6 +409,25 @@ int sod_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
                     outArrayClasses[h][w] = output_data[2 * (W * h + w)];
                 }
             }
+#elif ALG_CSNET
+	    size_t N = output_blob->getTensorDesc().getDims().at(0); //1
+	    size_t M = output_blob->getTensorDesc().getDims().at(1); //1
+	    size_t H = output_blob->getTensorDesc().getDims().at(2); // same as input_size
+	    size_t W = output_blob->getTensorDesc().getDims().at(3);
+
+	    size_t image_stride = W * H;
+
+	    /** This vector stores pixels classes **/
+	    std::vector<std::vector<float>> outArrayClasses(H, std::vector<float>(W, 0.));
+	    /** Iterating over each pixel **/
+	    for (size_t w = 0; w < W; ++w) {
+		    for (size_t h = 0; h < H; ++h) {
+			    outArrayClasses[h][w] = sigmoid(output_data[W * h + w]);
+		    }
+	    }
+#else // default
+	    assert(0); //not handle output
+#endif
             /* alpha blend outArrayProb to demo image*/
 	    alpha_blend(demo_image, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
             maskToBoxes(rects, demo_image.size().width, demo_image.size().height, outArrayClasses, W, H);
