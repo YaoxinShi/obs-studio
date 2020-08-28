@@ -235,7 +235,7 @@ mfxStatus _simple_alloc(mfxFrameAllocRequest *request,
 		desc.SampleDesc.Count = 1;
 		desc.Usage = D3D11_USAGE_DEFAULT;
 		desc.BindFlags = D3D11_BIND_DECODER;
-		desc.MiscFlags = 0;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 		//desc.MiscFlags            = D3D11_RESOURCE_MISC_SHARED;
 
 		if ((MFX_MEMTYPE_FROM_VPPIN & request->Type) &&
