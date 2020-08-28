@@ -205,7 +205,8 @@ void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::v
     //only return 4 biggest boxes
     if (sizeV > 4)
     {
-	    bboxes.erase(bboxes.begin() + 4, bboxes.begin() + sizeV);
+        do_log(LOG_WARNING, "kill rect by biggest 4");
+        bboxes.erase(bboxes.begin() + 4, bboxes.begin() + sizeV);
     }
 }
 
