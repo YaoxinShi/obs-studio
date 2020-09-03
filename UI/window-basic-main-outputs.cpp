@@ -1280,6 +1280,14 @@ inline void AdvancedOutput::SetupRecording()
 			"RecFilePath");
 	const char *mux = config_get_string(main->Config(), "AdvOut",
 			"RecMuxerCustom");
+	bool YUVEnable =
+		config_get_bool(main->Config(), "AdvOut", "YUVEnable");
+	const char *YUVFilePath =
+		config_get_string(main->Config(), "AdvOut", "YUVFilePath");
+	int YUVWidth =
+		config_get_int(main->Config(), "AdvOut", "YUVWidth");
+	int YUVHeight =
+		config_get_int(main->Config(), "AdvOut", "YUVHeight");
 	bool rescale = config_get_bool(main->Config(), "AdvOut",
 			"RecRescale");
 	const char *rescaleRes = config_get_string(main->Config(), "AdvOut",
@@ -1289,6 +1297,8 @@ inline void AdvancedOutput::SetupRecording()
 	unsigned int cx = 0;
 	unsigned int cy = 0;
 	int idx = 0;
+
+	obs_encoder_set_yuv(h264Recording, YUVEnable, YUVFilePath, YUVWidth, YUVHeight);
 
 	if (useStreamEncoder) {
 		obs_output_set_video_encoder(fileOutput, h264Streaming);
@@ -1329,6 +1339,10 @@ inline void AdvancedOutput::SetupRecording()
 
 	obs_data_set_string(settings, "path", path);
 	obs_data_set_string(settings, "muxer_settings", mux);
+	obs_data_set_bool(settings, "YUVEnable", YUVEnable);
+	obs_data_set_string(settings, "YUVFilePath", YUVFilePath);
+	obs_data_set_int(settings, "YUVWidth", YUVWidth);
+	obs_data_set_int(settings, "YUVHeight", YUVHeight);
 	obs_output_update(fileOutput, settings);
 	if (replayBuffer)
 		obs_output_update(replayBuffer, settings);

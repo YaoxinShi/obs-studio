@@ -2303,6 +2303,55 @@
                             <item row="6" column="1">
                              <widget class="QLineEdit" name="advOutMuxCustom"/>
                             </item>
+				   <item row="7" column="0">
+					   <widget class="QCheckBox" name="advOutYUVEnable">
+						   <property name="text">
+							   <string>*Enable YUV raw input*</string>
+						   </property>
+						   <property name="checked">
+							   <bool>false</bool>
+						   </property>
+					   </widget>
+				   </item>
+				   <item row="8" column="0">
+					   <widget class="QLabel" name="label_9002">
+						   <property name="text">
+							   <string>YUV File Path:</string>
+						   </property>
+						   <property name="buddy">
+							   <cstring>advOutYUVFilePath</cstring>
+						   </property>
+					   </widget>
+				   </item>
+				   <item row="8" column="1">
+					   <widget class="QLineEdit" name="advOutYUVFilePath"/>
+				   </item>
+				   <item row="9" column="0">
+					   <widget class="QLabel" name="label_9003">
+						   <property name="text">
+							   <string>YUV Width:</string>
+						   </property>
+						   <property name="buddy">
+							   <cstring>advOutYUVWidth</cstring>
+						   </property>
+					   </widget>
+				   </item>
+				   <item row="9" column="1">
+					   <widget class="QLineEdit" name="advOutYUVWidth"/>
+				   </item>
+				   <item row="10" column="0">
+					   <widget class="QLabel" name="label_9004">
+						   <property name="text">
+							   <string>YUV Height:</string>
+						   </property>
+						   <property name="buddy">
+							   <cstring>advOutYUVHeight</cstring>
+						   </property>
+					   </widget>
+				   </item>
+				   <item row="10" column="1">
+					   <widget class="QLineEdit" name="advOutYUVHeight"/>
+				   </item>
                            </layout>
                           </widget>
                          </item>

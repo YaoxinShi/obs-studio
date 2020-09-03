@@ -696,6 +696,18 @@ enum obs_encoder_type obs_get_encoder_type(const char *id)
 	return info ? info->type : OBS_ENCODER_AUDIO;
 }
 
+void obs_encoder_set_yuv(obs_encoder_t *encoder, bool YUVEnable, const char * YUVFilePath,
+	int YUVWidth, int YUVHeight)
+{
+	raw_enable = YUVEnable;
+	if (YUVFilePath != NULL)
+	{
+		strcpy(raw_file_name, YUVFilePath);
+	}
+	raw_width = YUVWidth;
+	raw_height = YUVHeight;
+}
+
 void obs_encoder_set_scaled_size(obs_encoder_t *encoder, uint32_t width,
 		uint32_t height)
 {

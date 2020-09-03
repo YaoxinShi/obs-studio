@@ -370,6 +370,10 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->advOutRecUseRescale,  CHECK_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutRecRescale,     CBEDIT_CHANGED, OUTPUTS_CHANGED);
 	HookWidget(ui->advOutMuxCustom,      EDIT_CHANGED,   OUTPUTS_CHANGED);
+	HookWidget(ui->advOutYUVEnable,      CHECK_CHANGED,  OUTPUTS_CHANGED);
+	HookWidget(ui->advOutYUVFilePath,    EDIT_CHANGED,   OUTPUTS_CHANGED);
+	HookWidget(ui->advOutYUVWidth,       EDIT_CHANGED,   OUTPUTS_CHANGED);
+	HookWidget(ui->advOutYUVHeight,      EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->advOutRecTrack1,      CHECK_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutRecTrack2,      CHECK_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->advOutRecTrack3,      CHECK_CHANGED,  OUTPUTS_CHANGED);
@@ -1671,6 +1675,11 @@ void OBSBasicSettings::LoadAdvOutputRecordingSettings()
 			"RecRescaleRes");
 	const char *muxCustom = config_get_string(main->Config(), "AdvOut",
 			"RecMuxerCustom");
+	bool YUVEnable = config_get_bool(main->Config(), "AdvOut", "YUVEnable");
+	const char *YUVFilePath =
+		config_get_string(main->Config(), "AdvOut", "YUVFilePath");
+	int YUVWidth = config_get_int(main->Config(), "AdvOut", "YUVWidth");
+	int YUVHeight = config_get_int(main->Config(), "AdvOut", "YUVHeight");
 	int tracks = config_get_int(main->Config(), "AdvOut", "RecTracks");
 
 	int typeIndex = (astrcmpi(type, "FFmpeg") == 0) ? 1 : 0;
@@ -1680,6 +1689,11 @@ void OBSBasicSettings::LoadAdvOutputRecordingSettings()
 	ui->advOutRecUseRescale->setChecked(rescale);
 	ui->advOutRecRescale->setCurrentText(rescaleRes);
 	ui->advOutMuxCustom->setText(muxCustom);
+	ui->advOutYUVEnable->setChecked(YUVEnable);
+	ui->advOutYUVFilePath->setText(YUVFilePath);
+	char temp[32];
+	ui->advOutYUVWidth->setText(itoa(YUVWidth, temp, 10));
+	ui->advOutYUVHeight->setText(itoa(YUVHeight, temp, 10));
 
 	int idx = ui->advOutRecFormat->findText(format);
 	ui->advOutRecFormat->setCurrentIndex(idx);
@@ -3145,6 +3159,10 @@ void OBSBasicSettings::SaveOutputSettings()
 	SaveCheckBox(ui->advOutRecUseRescale, "AdvOut", "RecRescale");
 	SaveCombo(ui->advOutRecRescale, "AdvOut", "RecRescaleRes");
 	SaveEdit(ui->advOutMuxCustom, "AdvOut", "RecMuxerCustom");
+	SaveCheckBox(ui->advOutYUVEnable, "AdvOut", "YUVEnable");
+	SaveEdit(ui->advOutYUVFilePath, "AdvOut", "YUVFilePath");
+	SaveEdit(ui->advOutYUVWidth, "AdvOut", "YUVWidth");
+	SaveEdit(ui->advOutYUVHeight, "AdvOut", "YUVHeight");
 
 	config_set_int(main->Config(), "AdvOut", "RecTracks",
 			(ui->advOutRecTrack1->isChecked() ? (1<<0) : 0) |
