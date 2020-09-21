@@ -430,6 +430,16 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 	obsqsv->params.nKeyIntSec = (mfxU16)keyint_sec;
 	obsqsv->params.nICQQuality = (mfxU16)icq_quality;
 	obsqsv->params.bMBBRC = mbbrc;
+	if (voi->format == VIDEO_FORMAT_NV12)
+	{
+		obsqsv->params.nFourCC = MFX_FOURCC_NV12;
+		obsqsv->params.nChromaFormat = MFX_CHROMAFORMAT_YUV420;
+	}
+	else if (voi->format == VIDEO_FORMAT_RGBA)
+	{
+		obsqsv->params.nFourCC = MFX_FOURCC_RGB4;
+		obsqsv->params.nChromaFormat = MFX_CHROMAFORMAT_YUV444;
+	}
 
 	info("settings:\n\trate_control:   %s", rate_control);
 
@@ -700,7 +710,12 @@ static bool obs_qsv_sei(void *data, uint8_t **sei, size_t *size)
 
 static inline bool valid_format(enum video_format format)
 {
-	return format == VIDEO_FORMAT_NV12;
+	enum qsv_cpu_platform qsv_platform = qsv_get_cpu_platform();
+	if (qsv_platform >= QSV_CPU_PLATFORM_KBL) // QSV_CPU_PLATFORM_ICL
+		return (format == VIDEO_FORMAT_NV12) ||
+		       (format == VIDEO_FORMAT_RGBA);
+	else
+		return format == VIDEO_FORMAT_NV12;
 }
 
 static inline void cap_resolution(obs_encoder_t *encoder,
@@ -731,6 +746,10 @@ static void obs_qsv_video_info(void *data, struct video_scale_info *info)
 
 	pref_format = obs_encoder_get_preferred_video_format(obsqsv->encoder);
 
+	if (obsqsv->context)
+	{
+		pref_format = qsv_encoder_get_video_format(obsqsv->context);
+	}
 	if (!valid_format(pref_format)) {
 		pref_format = valid_format(info->format) ? info->format
 							 : VIDEO_FORMAT_NV12;
