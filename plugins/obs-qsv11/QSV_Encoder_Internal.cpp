@@ -202,8 +202,8 @@ bool QSV_Encoder_Internal::InitParams(qsv_param_t *pParams)
 	m_mfxEncParams.mfx.CodecProfile = pParams->nCodecProfile;
 	m_mfxEncParams.mfx.FrameInfo.FrameRateExtN = pParams->nFpsNum;
 	m_mfxEncParams.mfx.FrameInfo.FrameRateExtD = pParams->nFpsDen;
-	m_mfxEncParams.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
-	m_mfxEncParams.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
+	m_mfxEncParams.mfx.FrameInfo.FourCC = pParams->nFourCC;
+	m_mfxEncParams.mfx.FrameInfo.ChromaFormat = pParams->nChromaFormat;
 	m_mfxEncParams.mfx.FrameInfo.PicStruct = MFX_PICSTRUCT_PROGRESSIVE;
 	m_mfxEncParams.mfx.FrameInfo.CropX = 0;
 	m_mfxEncParams.mfx.FrameInfo.CropY = 0;
@@ -341,7 +341,7 @@ mfxStatus QSV_Encoder_Internal::AllocateSurfaces()
 	mfxStatus sts = m_pmfxENC->QueryIOSurf(&m_mfxEncParams, &EncRequest);
 	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
-	EncRequest.Type |= WILL_WRITE;
+	EncRequest.Type |= WILL_WRITE | MFX_MEMTYPE_FROM_VPPIN;
 
 	// SNB hack. On some SNB, it seems to require more surfaces
 	EncRequest.NumFrameSuggested += m_mfxEncParams.AsyncDepth;
@@ -368,7 +368,8 @@ mfxStatus QSV_Encoder_Internal::AllocateSurfaces()
 	} else {
 		mfxU16 width = (mfxU16)MSDK_ALIGN32(EncRequest.Info.Width);
 		mfxU16 height = (mfxU16)MSDK_ALIGN32(EncRequest.Info.Height);
-		mfxU8 bitsPerPixel = 12;
+		mfxU8 bitsPerPixel =
+			EncRequest.Info.FourCC == MFX_FOURCC_NV12 ? 12 : 8 * 4;
 		mfxU32 surfaceSize = width * height * bitsPerPixel / 8;
 		m_nSurfNum = EncRequest.NumFrameSuggested;
 
@@ -381,11 +382,18 @@ mfxStatus QSV_Encoder_Internal::AllocateSurfaces()
 			       sizeof(mfxFrameInfo));
 
 			mfxU8 *pSurface = (mfxU8 *)new mfxU8[surfaceSize];
-			m_pmfxSurfaces[i]->Data.Y = pSurface;
-			m_pmfxSurfaces[i]->Data.U = pSurface + width * height;
-			m_pmfxSurfaces[i]->Data.V =
-				pSurface + width * height + 1;
-			m_pmfxSurfaces[i]->Data.Pitch = width;
+			if (EncRequest.Info.FourCC == MFX_FOURCC_NV12) {
+				m_pmfxSurfaces[i]->Data.Y = pSurface;
+				m_pmfxSurfaces[i]->Data.U =
+					pSurface + width * height;
+				m_pmfxSurfaces[i]->Data.V =
+					pSurface + width * height + 1;
+				m_pmfxSurfaces[i]->Data.Pitch = width;
+			} else if (EncRequest.Info.FourCC == MFX_FOURCC_RGB4) {
+				m_pmfxSurfaces[i]->Data.B = pSurface;
+				m_pmfxSurfaces[i]->Data.Pitch = width * 4;
+			} else
+				return MFX_ERR_INVALID_VIDEO_PARAM;
 		}
 	}
 
@@ -479,18 +487,30 @@ mfxStatus QSV_Encoder_Internal::LoadNV12(mfxFrameSurface1 *pSurface,
 	}
 
 	pitch = pData->Pitch;
-	ptr = pData->Y + pInfo->CropX + pInfo->CropY * pData->Pitch;
+	if (pInfo->FourCC == MFX_FOURCC_NV12) {
+		if (pData->Y == NULL || pData->UV == NULL)
+			return MFX_ERR_NULL_PTR;
 
-	// load Y plane
-	for (i = 0; i < h; i++)
-		memcpy(ptr + i * pitch, pDataY + i * strideY, w);
+		// load Y plane
+		ptr = pData->Y + pInfo->CropX + pInfo->CropY * pData->Pitch;
 
-	// load UV plane
-	h /= 2;
-	ptr = pData->UV + pInfo->CropX + (pInfo->CropY / 2) * pitch;
+		for (i = 0; i < h; i++)
+			memcpy(ptr + i * pitch, pDataY + i * strideY, w);
 
-	for (i = 0; i < h; i++)
-		memcpy(ptr + i * pitch, pDataUV + i * strideUV, w);
+		// load UV plane
+		h /= 2;
+		ptr = pData->UV + pInfo->CropX + (pInfo->CropY / 2) * pitch;
+
+		for (i = 0; i < h; i++)
+			memcpy(ptr + i * pitch, pDataUV + i * strideUV, w);
+	} else if (pInfo->FourCC == MFX_FOURCC_RGB4) {
+		ptr = pData->B + pInfo->CropX + pInfo->CropY * pData->Pitch;
+
+		for (i = 0; i < h; i++)
+			memcpy(ptr + i * pitch, pDataY + i * strideY,
+			       4 * w);
+	} else
+		return MFX_ERR_UNDEFINED_BEHAVIOR;
 
 	return MFX_ERR_NONE;
 }
@@ -738,4 +758,14 @@ mfxStatus QSV_Encoder_Internal::Reset(qsv_param_t *pParams)
 	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
 	return sts;
+}
+
+mfxStatus QSV_Encoder_Internal::GetCurrentFourCC(mfxU32 &fourCC)
+{
+	if (m_pmfxENC != nullptr)
+		fourCC = m_mfxEncParams.mfx.FrameInfo.FourCC;
+	else
+		return MFX_ERR_NOT_INITIALIZED;
+
+	return MFX_ERR_NONE;
 }
