@@ -64,6 +64,10 @@ IDXGIAdapter *GetIntelDeviceAdapterHandle(mfxSession session)
 
 	IDXGIAdapter *adapter;
 	hres = g_pDXGIFactory->EnumAdapters(adapterNum, &adapter);
+
+	DXGI_ADAPTER_DESC desc;
+	adapter->GetDesc(&desc);
+
 	if (FAILED(hres))
 		return NULL;
 
@@ -90,8 +94,8 @@ mfxStatus CreateHWDevice(mfxSession session, mfxHDL *deviceHandle, HWND hWnd,
 	if (NULL == g_pAdapter)
 		return MFX_ERR_DEVICE_FAILED;
 
-	UINT dxFlags = 0;
-	//UINT dxFlags = D3D11_CREATE_DEVICE_DEBUG;
+	//UINT dxFlags = 0;
+	UINT dxFlags = D3D11_CREATE_DEVICE_DEBUG;
 
 	hres = D3D11CreateDevice(
 		g_pAdapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, dxFlags,
