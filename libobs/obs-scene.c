@@ -632,6 +632,27 @@ update_transforms_and_prune_sources(obs_scene_t *scene,
 			video_unlock(group_scene);
 		}
 
+		if (strcmp(item->source->context.name,"Text (GDI+)") == 0) {
+			os_atomic_set_bool(&item->update_transform, true);
+			item->pos.x += 1.0;
+			item->pos.y += 1.0;
+
+			uint32_t item_width =
+				obs_source_get_width(item->source);
+			uint32_t item_height =
+				obs_source_get_height(item->source);
+			uint32_t scene_width =
+				obs_source_get_width(scene->source);
+			uint32_t scene_height =
+				obs_source_get_height(scene->source);
+			if (item->pos.x + item_width > scene_width) {
+				item->pos.x = 0.0;
+			}
+			if (item->pos.y + item_height > scene_height) {
+				item->pos.y = 0.0;
+			}
+		}
+
 		if (os_atomic_load_bool(&item->update_transform) ||
 		    source_size_changed(item)) {
 
