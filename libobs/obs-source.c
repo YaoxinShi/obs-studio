@@ -2184,7 +2184,7 @@ static inline void render_video(obs_source_t *source)
 		obs_source_render_filters(source);
 
 	else if (source->info.video_render)
-		obs_source_main_render(source);
+		obs_source_main_render(source); // [aaa] 4.2 Text source comes here
 
 	else if (source->filter_target)
 		obs_source_video_render(source->filter_target);
@@ -2193,7 +2193,7 @@ static inline void render_video(obs_source_t *source)
 		deinterlace_render(source);
 
 	else
-		obs_source_render_async_video(source);
+		obs_source_render_async_video(source); // [aaa] 4.1 Media source comes here
 
 	GS_DEBUG_MARKER_END();
 }

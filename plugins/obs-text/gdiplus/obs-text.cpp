@@ -562,6 +562,8 @@ void TextSource::RenderText()
 
 	if (!text.empty() || use_extents)
 		full_bk_color |= get_alpha_val(bk_opacity);
+	// change text source's background color to green (together with enable alpha)
+	full_bk_color = 0xff00ff00;
 
 	if ((size.cx > box.Width || size.cy > box.Height) && !use_extents) {
 		stat = graphics_bitmap.Clear(Color(0));

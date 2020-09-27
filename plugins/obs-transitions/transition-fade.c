@@ -63,6 +63,7 @@ static void fade_callback(void *data, gs_texture_t *a, gs_texture_t *b, float t,
 
 static void fade_video_render(void *data, gs_effect_t *effect)
 {
+	// [aaa] 1. fade_video_render
 	struct fade_info *fade = data;
 	obs_transition_video_render(fade->source, fade_callback);
 	UNUSED_PARAMETER(effect);

@@ -3511,6 +3511,8 @@ void OBSBasic::RenderMain(void *data, uint32_t cx, uint32_t cy)
 	gs_projection_push();
 
 	obs_display_t *display = window->ui->preview->GetDisplay();
+	// change preview window's background color to blue
+	obs_display_set_background_color(display, 0x00ff0000);
 	uint32_t width, height;
 	obs_display_size(display, &width, &height);
 	float right = float(width) - window->previewX;

@@ -132,6 +132,7 @@ static inline void render_main_texture(struct obs_core_video *video)
 	struct vec4 clear_color;
 	vec4_set(&clear_color, 0.0f, 0.0f, 0.0f, 0.0f);
 
+	// [bbb] output_frame() writes to render_texture
 	gs_set_render_target(video->render_texture, NULL);
 	gs_clear(GS_CLEAR_COLOR, &clear_color, 1.0f, 0);
 
@@ -211,6 +212,7 @@ static inline gs_effect_t *get_scale_effect(struct obs_core_video *video,
 static const char *render_output_texture_name = "render_output_texture";
 static inline gs_texture_t *render_output_texture(struct obs_core_video *video)
 {
+	// [bbb] render_output_texture() reads render_texture and do scaling. Later will do NV12 conversion in render_convert_texture()
 	gs_texture_t *texture = video->render_texture;
 	gs_texture_t *target = video->output_texture;
 	uint32_t width = gs_texture_get_width(target);

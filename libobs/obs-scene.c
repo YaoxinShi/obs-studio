@@ -538,6 +538,7 @@ static inline void render_item(struct obs_scene_item *item)
 	GS_DEBUG_MARKER_BEGIN_FORMAT(GS_DEBUG_COLOR_ITEM, "Item: %s",
 				     obs_source_get_name(item->source));
 
+	// [aaa] 4. render one source
 	if (item->item_render) {
 		uint32_t width = obs_source_get_width(item->source);
 		uint32_t height = obs_source_get_height(item->source);
@@ -647,6 +648,7 @@ update_transforms_and_prune_sources(obs_scene_t *scene,
 
 static void scene_video_render(void *data, gs_effect_t *effect)
 {
+	// [aaa] 2. scene_video_render
 	DARRAY(struct obs_scene_item *) remove_items;
 	struct obs_scene *scene = data;
 	struct obs_scene_item *item;
@@ -660,10 +662,17 @@ static void scene_video_render(void *data, gs_effect_t *effect)
 						    NULL);
 	}
 
+	// change scene's background color to red
+	struct vec4 clear_color;
+	vec4_zero(&clear_color);
+	clear_color.x = 0xff;
+	gs_clear(GS_CLEAR_COLOR, &clear_color, 0.0f, 0);
+
 	gs_blend_state_push();
 	gs_reset_blend_state();
 
 	item = scene->first_item;
+	// [aaa] 3. loop to render each source
 	while (item) {
 		if (item->user_visible)
 			render_item(item);
