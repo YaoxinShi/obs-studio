@@ -20,6 +20,11 @@
 #include "graphics/math-defs.h"
 #include "obs-scene.h"
 
+#define OUTPUT_POS_MASK 0
+#if OUTPUT_POS_MASK
+float prev_x, prev_y;
+#endif
+
 const struct obs_source_info group_info;
 
 static void resize_group(obs_sceneitem_t *group);
@@ -615,6 +620,67 @@ static void update_transforms_and_prune_sources(obs_scene_t *scene,
 			video_unlock(group_scene);
 		}
 
+#if OUTPUT_POS_MASK
+		if (strcmp(item->source->context.name, "VideoCaptureDevice") == 0) {
+			unsigned int action = 0;
+			unsigned int full_mask = 0;
+			float item_width =
+				obs_source_get_width(item->source) * item->scale.x;
+			float item_height =
+				obs_source_get_height(item->source) * item->scale.y;
+			float scene_width =
+				obs_source_get_width(scene->source);
+			float scene_height =
+				obs_source_get_height(scene->source);
+			FILE* fh = fopen("c:\\temp\\mask.bin", "rb");
+			if (fh != NULL) {
+				fread(&action, sizeof(unsigned int), 1, fh);
+				fread(&full_mask, sizeof(unsigned int), 1, fh);
+				fclose(fh);
+			}
+			if (action == 0) { // action == 0, do nothing
+			}
+			else if (action == 1) { // action == 1, need check
+				os_atomic_set_bool(&item->update_transform, true);
+				prev_x = item->pos.x;
+				prev_y = item->pos.y;
+				item->pos.x = scene_width;
+				item->pos.y = scene_height;
+			}
+			else if (action == 2) { // action == 2, get result
+				os_atomic_set_bool(&item->update_transform, true);
+				if (full_mask == 0xf) {
+					item->pos.x = prev_x;
+					item->pos.y = prev_y;
+				}
+				else {
+					if ((full_mask & 0x1) == 0) {
+						item->pos.x = scene_width - item_width;
+						item->pos.y = scene_height - item_height;
+					}
+					else if ((full_mask & 0x2) == 0) {
+						item->pos.x = 0.0;
+						item->pos.y = scene_height - item_height;
+					}
+					else if ((full_mask & 0x4) == 0) {
+						item->pos.x = scene_width - item_width;
+						item->pos.y = 0.0;
+					}
+					else if ((full_mask & 0x8) == 0) {
+						item->pos.x = 0.0;
+						item->pos.y = 0.0;
+					}
+				}
+				fopen("c:\\temp\\mask.bin", "wb");
+				if (fh != NULL) {
+					action = 3;
+					fwrite(&action, sizeof(unsigned int), 1, fh);
+					fwrite(&action, sizeof(unsigned int), 1, fh);
+					fclose(fh);
+				}
+			}
+		}
+#endif
 		if (os_atomic_load_bool(&item->update_transform) ||
 		    source_size_changed(item)) {
 

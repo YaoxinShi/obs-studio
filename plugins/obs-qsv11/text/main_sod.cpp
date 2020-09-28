@@ -29,6 +29,27 @@
 #define SHOW_CV_OUTPUT_IMAGE 1
 #define USE_OBS_INPUT 1
 
+#define OUTPUT_POS_MASK 0
+#if OUTPUT_POS_MASK
+#include <io.h>
+#define POOL_SIZE 8
+unsigned int pool[POOL_SIZE];
+unsigned int pool_index;
+std::vector<cv::Rect> camera_position;
+unsigned int curr_mask;
+unsigned int full_mask;
+unsigned int sod_frame_number = 0;
+unsigned int sod_frame_loop = 100;
+bool RectOverlap(cv::Rect box1, cv::Rect box2)
+{
+	if (box1.x > box2.x + box2.width) { return false; }
+	if (box1.y > box2.y + box2.height) { return false; }
+	if (box1.x + box1.width < box2.x) { return false; }
+	if (box1.y + box1.height < box2.y) { return false; }
+	return true;
+}
+#endif
+
 #define ALG_BDMP 0
 #define ALG_CSNET 1
 
@@ -208,6 +229,73 @@ void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::v
         do_log(LOG_WARNING, "kill rect by biggest 4");
         bboxes.erase(bboxes.begin() + 4, bboxes.begin() + sizeV);
     }
+
+#if OUTPUT_POS_MASK
+    if (sod_frame_number % sod_frame_loop == 0) {
+	    for (int i = 0; i < POOL_SIZE; i++)
+	    {
+		    pool[i] = 0;
+	    }
+	    pool_index = 0;
+
+	    //	3	2
+	    //
+	    //	1	0
+	    if (camera_position.size() == 0) {
+		    camera_position.emplace_back(cv::Rect(w / 5 * 4, h / 5 * 4, w / 5, h / 5));
+		    camera_position.emplace_back(cv::Rect(0, h / 5 * 4, w / 5, h / 5));
+		    camera_position.emplace_back(cv::Rect(w / 5 * 4, 0, w / 5, h / 5));
+		    camera_position.emplace_back(cv::Rect(0, 0, w / 5, h / 5));
+	    }
+
+	    std::string prefix = "c:\\temp\\";
+	    if (_access(prefix.c_str(), 0) == -1)
+		    _mkdir(prefix.c_str());
+	    // mask.bin contains two DWORDs:
+	    // 1st DWORD is state: 1=start detect, 2=detect finished, 3=update position finished
+	    // 2nd DWORD is salient area mask. bit 0~3 means four corners are salient area
+	    //	3	2
+	    //
+	    //	1	0
+	    FILE* fh = fopen("c:\\temp\\mask.bin", "wb");
+	    if (fh != NULL) {
+		    int state = 1;
+		    fwrite(&state, sizeof(unsigned int), 1, fh);
+		    fwrite(&state, sizeof(unsigned int), 1, fh);
+		    fclose(fh);
+	    }
+    }
+    else if (sod_frame_number % sod_frame_loop < 9)
+    {
+	    curr_mask = 0;
+	    for (i = 0; i < camera_position.size(); i++) {
+		    for (j = 0; j < bboxes.size(); j++) {
+			    if (RectOverlap(camera_position[i], bboxes[j])) {
+				    curr_mask |= (1 << i);
+			    }
+		    }
+	    }
+
+	    pool[pool_index] = curr_mask;
+	    pool_index = (pool_index + 1) % POOL_SIZE;
+
+	    if (sod_frame_number % sod_frame_loop == 8) {
+		    full_mask = 0;
+		    for (i = 0; i < POOL_SIZE; i++) {
+			    full_mask |= pool[i];
+		    }
+
+		    FILE* fh = fopen("c:\\temp\\mask.bin", "wb");
+		    if (fh != NULL) {
+			    int state = 2;
+			    fwrite(&state, sizeof(unsigned int), 1, fh);
+			    fwrite(&full_mask, sizeof(unsigned int), 1, fh);
+			    fclose(fh);
+		    }
+	    }
+    }
+    sod_frame_number++;
+#endif
 }
 
 int cnn_init_sod()
@@ -508,13 +596,25 @@ int sod_detection(uint8_t * pY, uint32_t width, uint32_t height, pthread_mutex_t
         if (SHOW_CV_OUTPUT_IMAGE)
         {
             cv::putText(demo_image,
+#if OUTPUT_POS_MASK
+	        "inference(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(infer_end - infer_begin).count()) +
+	        ", postprocess(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(pp_end - pp_begin).count()) +
+	        ", draw(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count()) +
+	        ", fps: " + std::to_string(fps) + \
+	        ", found: " + std::to_string(num_found) + \
+	        ", frame: " + std::to_string(fn) + \
+	        ", curr_mask: " + std::to_string(curr_mask) + \
+	        ", full_mask: " + std::to_string(full_mask) + \
+	        ", sod_frame: " + std::to_string(sod_frame_number),
+#else
                 "inference(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(infer_end - infer_begin).count()) + 
                 ", postprocess(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(pp_end - pp_begin).count()) + 
                 ", draw(ms): " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(draw_end - draw_begin).count()) + 
                 ", fps: " + std::to_string(fps) + \
                 ", found: " + std::to_string(num_found) + \
                 ", frame: " + std::to_string(fn),
-                cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
+#endif
+            cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
             cv::namedWindow("Press any key to exit", cv::WINDOW_NORMAL);
             cv::resizeWindow("Press any key to exit", 960, 540);
             cv::imshow("Press any key to exit", demo_image);
