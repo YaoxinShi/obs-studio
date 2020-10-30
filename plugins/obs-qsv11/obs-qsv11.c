@@ -911,6 +911,7 @@ static bool obs_qsv_encode_tex(void *data, uint32_t handle, int64_t pts,
 			       bool *received_packet)
 {
 	struct obs_qsv *obsqsv = data;
+	blog(LOG_INFO, "=== [qsv] receive texture, handle %p", handle);
 
 	if (handle == GS_INVALID_HANDLE) {
 		warn("Encode failed: bad texture handle");

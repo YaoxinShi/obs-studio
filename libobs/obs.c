@@ -53,6 +53,10 @@ static inline void calc_gpu_conversion_sizes(const struct obs_video_info *ovi)
 	video->conversion_width_i = 0.f;
 
 	switch ((uint32_t)ovi->output_format) {
+	case VIDEO_FORMAT_RGBA:
+		video->conversion_techs[0] = "DrawAlphaDivide";
+		video->conversion_width_i = 1.f / (float)ovi->output_width;
+		break;
 	case VIDEO_FORMAT_I420:
 		video->conversion_needed = true;
 		video->conversion_techs[0] = "Planar_Y";
@@ -88,8 +92,15 @@ static bool obs_init_gpu_conversion(struct obs_video_info *ovi)
 	if (!video->conversion_needed) {
 		blog(LOG_INFO, "GPU conversion not available for format: %u",
 		     (unsigned int)ovi->output_format);
-		video->gpu_conversion = false;
-		video->using_nv12_tex = false;
+		//video->gpu_conversion = false;
+		//video->using_nv12_tex = false;
+		video->gpu_conversion = true; // force tex_enc for RGB case
+		video->using_nv12_tex = true;
+		video->convert_textures[0] =
+			gs_texture_create(ovi->output_width, ovi->output_height, GS_RGBA, 1, NULL,
+			GS_RENDER_TARGET | GS_SHARED_KM_TEX);
+		blog(LOG_INFO, "=== [obs] create convert texture %p",
+		     video->convert_textures[0]);
 		blog(LOG_INFO, "NV12 texture support not available");
 		return true;
 	}
