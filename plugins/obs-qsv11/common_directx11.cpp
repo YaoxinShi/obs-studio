@@ -9,6 +9,7 @@ Copyright(c) 2005-2014 Intel Corporation. All Rights Reserved.
 *****************************************************************************/
 
 #include "common_directx11.h"
+#include <obs-module.h>
 
 #include <map>
 
@@ -467,6 +468,79 @@ mfxStatus simple_copytex(mfxHDL pthis, mfxMemId mid, mfxU32 tex_handle,
 	D3D11_BOX SrcBox = {0, 0, 0, desc.Width, desc.Height, 1};
 	g_pD3D11Ctx->CopySubresourceRegion(pSurface, 0, 0, 0, 0, input_tex, 0,
 					   &SrcBox);
+
+#if 1
+	//=======================================================
+	// debug texture data
+	D3D11_MAPPED_SUBRESOURCE    lockedRect = { 0 };
+	D3D11_MAP   mapType = D3D11_MAP_READ;
+	UINT        mapFlags = D3D11_MAP_FLAG_DO_NOT_WAIT;
+	mfxU16 Pitch = 0;
+	mfxU8* Y = 0;
+	mfxU8* U = 0;
+	mfxU8* V = 0;
+	ID3D11Texture2D *pStage = (ID3D11Texture2D *)memId->memIdStage;
+	D3D11_TEXTURE2D_DESC desc1 = {0};
+	pStage->GetDesc(&desc1);
+
+	//input_tex
+	input_tex->GetDesc(&desc);
+
+	g_pD3D11Ctx->CopySubresourceRegion(pStage, 0, 0, 0, 0, input_tex, 0, NULL);
+	do {
+		hr = g_pD3D11Ctx->Map(pStage, 0, mapType, mapFlags, &lockedRect);
+		if (S_OK != hr && DXGI_ERROR_WAS_STILL_DRAWING != hr)
+			return MFX_ERR_LOCK_MEMORY;
+	} while (DXGI_ERROR_WAS_STILL_DRAWING == hr);
+
+	switch (desc.Format) {
+	case DXGI_FORMAT_NV12:
+	case DXGI_FORMAT_R8G8B8A8_UNORM:
+	case DXGI_FORMAT_B8G8R8A8_UNORM:
+		Pitch = (mfxU16)lockedRect.RowPitch;
+		Y = (mfxU8*)lockedRect.pData;
+		U = (mfxU8*)lockedRect.pData + desc.Height * lockedRect.RowPitch;
+		V = U + 1;
+		blog(LOG_INFO,
+		     "=== [qsv] copy_tex, dump tex(source), handle=%x, format=%d(staging:%d), [%d,%d,%d,%d]",
+		     tex_handle, desc.Format, desc1.Format, Y[0], Y[1], Y[2], Y[3]);
+		break;
+	default:
+		return MFX_ERR_LOCK_MEMORY;
+	}
+
+	g_pD3D11Ctx->Unmap(pStage, 0);
+
+	//pSurface
+	pSurface->GetDesc(&desc);
+
+	g_pD3D11Ctx->CopySubresourceRegion(pStage, 0, 0, 0, 0, pSurface, 0, NULL);
+	do {
+		hr = g_pD3D11Ctx->Map(pStage, 0, mapType, mapFlags, &lockedRect);
+		if (S_OK != hr && DXGI_ERROR_WAS_STILL_DRAWING != hr)
+			return MFX_ERR_LOCK_MEMORY;
+	} while (DXGI_ERROR_WAS_STILL_DRAWING == hr);
+
+	switch (desc.Format) {
+	case DXGI_FORMAT_NV12:
+	case DXGI_FORMAT_R8G8B8A8_UNORM:
+	case DXGI_FORMAT_B8G8R8A8_UNORM:
+		Pitch = (mfxU16)lockedRect.RowPitch;
+		Y = (mfxU8*)lockedRect.pData;
+		U = (mfxU8*)lockedRect.pData + desc.Height * lockedRect.RowPitch;
+		V = U + 1;
+		blog(LOG_INFO,
+		     "=== [qsv] copy_tex, dump tex(dest), handle=%x, format=%d(staging:%d), [%d,%d,%d,%d]",
+		     tex_handle, desc.Format, desc1.Format, Y[0], Y[1], Y[2],
+		     Y[3]);
+		break;
+	default:
+		return MFX_ERR_LOCK_MEMORY;
+	}
+
+	g_pD3D11Ctx->Unmap(pStage, 0);
+	//=======================================================
+#endif
 
 	km->ReleaseSync(*next_key);
 

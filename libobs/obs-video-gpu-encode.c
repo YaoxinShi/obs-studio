@@ -16,6 +16,8 @@
 ******************************************************************************/
 
 #include "obs-internal.h"
+#include <d3d11.h>
+#include <dxgi1_2.h>
 
 static void *gpu_encode_thread(void *unused)
 {
@@ -99,6 +101,117 @@ static void *gpu_encode_thread(void *unused)
 				next_key++;
 
 			blog(LOG_INFO, "=== [gpu-encode] send texture %p, handle %p to QSV", tf.tex, tf.handle);
+
+#if 1 //!!! Remember to add "d3d11.lib, dxgi.lib, dxguid.lib" to libobs's Properties->Linker->Input!!!
+			//=======================================================
+			// debug texture data
+			HRESULT hres = S_OK;
+			ID3D11Device*	pD3D11Device;
+			ID3D11DeviceContext*	pD3D11Ctx;
+
+			D3D_FEATURE_LEVEL FeatureLevels[] = {
+				D3D_FEATURE_LEVEL_11_1,
+				D3D_FEATURE_LEVEL_11_0,
+				D3D_FEATURE_LEVEL_10_1,
+				D3D_FEATURE_LEVEL_10_0,
+				D3D_FEATURE_LEVEL_9_3,
+			};
+			D3D_FEATURE_LEVEL pFeatureLevelsOut;
+
+			UINT dxFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+			dxFlags |= D3D11_CREATE_DEVICE_DEBUG; // only for debug, need install Win10SDK
+
+			//create D3D11 device
+			hres = D3D11CreateDevice(NULL,
+				D3D_DRIVER_TYPE_HARDWARE,
+				NULL,
+				dxFlags,
+				FeatureLevels,
+				(sizeof(FeatureLevels) / sizeof(FeatureLevels[0])),
+				D3D11_SDK_VERSION,
+				&pD3D11Device,
+				&pFeatureLevelsOut,
+				&pD3D11Ctx);
+			if (FAILED(hres))
+				return NULL;
+
+			//open shared resource
+			ID3D11Texture2D *input_tex;
+			hres = pD3D11Device->lpVtbl->OpenSharedResource(pD3D11Device, (HANDLE)tf.handle, &IID_ID3D11Texture2D, (void**)&input_tex);
+			if (FAILED(hres)) {
+				return NULL;
+			}
+
+			//create staging surface, in the same format as shared resource
+			D3D11_TEXTURE2D_DESC desc1 = { 0 };
+			input_tex->lpVtbl->GetDesc(input_tex, &desc1);
+
+			D3D11_TEXTURE2D_DESC desc = { 0 };
+			desc.Width = desc1.Width;
+			desc.Height = desc1.Height;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			desc.SampleDesc.Count = 1;
+			desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			desc.Usage = D3D11_USAGE_STAGING;
+
+			ID3D11Texture2D* pTexture2D = NULL;
+			hres = pD3D11Device->lpVtbl->CreateTexture2D(pD3D11Device, &desc, NULL, &pTexture2D);
+			if (FAILED(hres)) {
+				return NULL;
+			}
+
+			//copy, shared resource -> staging surface
+			IDXGIKeyedMutex *km;
+			hres = input_tex->lpVtbl->QueryInterface(input_tex, &IID_IDXGIKeyedMutex, (void**)&km);
+			if (FAILED(hres)) {
+				input_tex->lpVtbl->Release(input_tex);
+				return NULL;
+			}
+
+			input_tex->lpVtbl->SetEvictionPriority(input_tex, DXGI_RESOURCE_PRIORITY_MAXIMUM);
+
+			km->lpVtbl->AcquireSync(km, lock_key, INFINITE);
+
+			pD3D11Ctx->lpVtbl->CopyResource(pD3D11Ctx, (ID3D11Resource *)pTexture2D, (ID3D11Resource *)input_tex);
+
+			km->lpVtbl->ReleaseSync(km, lock_key); //keep use lock_key. If using next_key, later debug code will fail in AcquireSync
+
+			//map staging surface and read the texture data
+			D3D11_MAPPED_SUBRESOURCE    lockedRect = { 0 };
+			D3D11_MAP   mapType = D3D11_MAP_READ;
+			UINT        mapFlags = D3D11_MAP_FLAG_DO_NOT_WAIT;
+			uint16_t Pitch = 0;
+			uint8_t* Y = 0;
+			uint8_t* U = 0;
+			uint8_t* V = 0;
+			do {
+				hres = pD3D11Ctx->lpVtbl->Map(pD3D11Ctx, (ID3D11Resource *)pTexture2D, 0, mapType, mapFlags, &lockedRect);
+				if (S_OK != hres && DXGI_ERROR_WAS_STILL_DRAWING != hres)
+					return NULL;
+			} while (DXGI_ERROR_WAS_STILL_DRAWING == hres);
+
+			switch (desc.Format) {
+			case DXGI_FORMAT_NV12:
+			case DXGI_FORMAT_R8G8B8A8_UNORM:
+			case DXGI_FORMAT_B8G8R8A8_UNORM:
+				Pitch = (uint16_t)lockedRect.RowPitch;
+				Y = (uint8_t*)lockedRect.pData;
+				U = (uint8_t*)lockedRect.pData + desc.Height * lockedRect.RowPitch;
+				V = U + 1;
+				blog(LOG_INFO,
+				     "=== [gpu-encode] start encode_texture, dump tex, handle=%x, format=%d(staging:%d), [%d,%d,%d,%d]",
+				     tf.handle, desc1.Format, desc.Format, Y[0], Y[1],
+				     Y[2], Y[3]);
+				break;
+			default:
+				return NULL;
+			}
+
+			pD3D11Ctx->lpVtbl->Unmap(pD3D11Ctx, (ID3D11Resource *)pTexture2D, 0);
+			//=======================================================
+#endif
 			success = encoder->info.encode_texture(
 				encoder->context.data, tf.handle,
 				encoder->cur_pts, lock_key, &next_key, &pkt,
