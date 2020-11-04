@@ -420,16 +420,16 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 	 * reason.  otherwise, it goes to the 'duplicate' case above, which
 	 * will ensure better performance. */
 	if (raw_active || vframe_info->count > 1) {
-		blog(LOG_INFO, "=== [obs-video] send %p to encode thread, keep output_texture",
+		blog(LOG_INFO, "=== [obs-video] send %p to encode thread, keep convert_textures",
 		     tf.tex);
-		gs_copy_texture(tf.tex, video->output_texture);
+		gs_copy_texture(tf.tex, video->convert_textures[0]);
 	} else {
-		blog(LOG_INFO, "=== [obs-video] send %p to encode thread, output_texture switch to %p",
-		     video->output_texture, tf.tex);
-		gs_texture_t *tex = video->output_texture;
+		blog(LOG_INFO, "=== [obs-video] send %p to encode thread, convert_textures switch to %p",
+		     video->convert_textures[0], tf.tex);
+		gs_texture_t *tex = video->convert_textures[0];
 		//gs_texture_t *tex_uv = video->convert_textures[1];
 
-		video->output_texture = tf.tex;
+		video->convert_textures[0] = tf.tex;
 		//video->convert_textures[1] = tf.tex_uv;
 
 		tf.tex = tex;
@@ -500,9 +500,8 @@ static inline void render_video(struct obs_core_video *video, bool raw_active,
 			gs_flush();
 #endif
 
-		//if (video->gpu_conversion)
-		//	render_convert_texture(video, texture);
-		video->texture_converted = true;
+		if (video->gpu_conversion)
+			render_convert_texture(video, texture);
 
 #ifdef _WIN32
 		if (gpu_active) {
