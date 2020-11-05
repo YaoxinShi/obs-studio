@@ -482,6 +482,59 @@ end:
 }
 #endif
 
+gs_stagesurf_t *CopySurfRGBA = NULL;
+gs_stagesurf_t *CopySurfNV12 = NULL;
+gs_stagesurf_t *CopySurfR8 = NULL;
+//please make sure the texture is created with GS_SHARED_KM_TEX
+//to test, add a color source with all red. ARGB pixel = [255,0,0,255], YUV pixel = [80,80,80,80]
+void dump_texture(gs_texture_t *tex, bool using_nv12_tex)
+{
+	if (CopySurfRGBA == NULL) {
+		CopySurfRGBA = gs_stagesurface_create(1920, 1080, GS_RGBA);
+	}
+	if (CopySurfNV12 == NULL) {
+		CopySurfNV12 = gs_stagesurface_create_nv12(1920, 1080);
+	}
+	if (CopySurfR8 == NULL) {
+		CopySurfR8 = gs_stagesurface_create(1920, 1080, GS_R8);
+	}
+
+	if (tex == NULL) {
+		blog(LOG_INFO, "=== [input surface is NULL]");
+		return;
+	}
+
+	gs_flush();
+
+	uint8_t *data;
+	uint32_t linesize;
+	int fmt = gs_texture_get_color_format(tex);
+	if (fmt == GS_RGBA) {
+		gs_stage_texture(CopySurfRGBA, tex);
+		gs_stagesurface_map(CopySurfRGBA, &data, &linesize);
+		blog(LOG_INFO, "=== tex %p, [%d,%d,%d,%d]", tex, data[0],
+		     data[1], data[2], data[3]);
+		gs_stagesurface_unmap(CopySurfRGBA);
+	} else if (fmt == GS_R8) {
+		if (using_nv12_tex) {
+			gs_stage_texture(CopySurfNV12, tex);
+			gs_stagesurface_map(CopySurfNV12, &data, &linesize);
+			blog(LOG_INFO, "=== tex %p, [%d,%d,%d,%d]", tex,
+			     data[0], data[1], data[2], data[3]);
+			gs_stagesurface_unmap(CopySurfNV12);
+		} else {
+
+			gs_stage_texture(CopySurfR8, tex);
+			gs_stagesurface_map(CopySurfR8, &data, &linesize);
+			blog(LOG_INFO, "=== tex %p, [%d,%d,%d,%d]", tex,
+			     data[0], data[1], data[2], data[3]);
+			gs_stagesurface_unmap(CopySurfR8);
+		}
+	} else {
+		blog(LOG_INFO, "=== [surf fmt not handled]");
+	}
+}
+
 static inline void render_video(struct obs_core_video *video, bool raw_active,
 				const bool gpu_active, int cur_texture)
 {
@@ -495,6 +548,8 @@ static inline void render_video(struct obs_core_video *video, bool raw_active,
 	if (raw_active || gpu_active) {
 		gs_texture_t *texture = render_output_texture(video);
 
+		dump_texture(texture, false);
+
 #ifdef _WIN32
 		if (gpu_active)
 			gs_flush();
@@ -502,6 +557,8 @@ static inline void render_video(struct obs_core_video *video, bool raw_active,
 
 		if (video->gpu_conversion)
 			render_convert_texture(video, texture);
+
+		dump_texture(video->convert_textures[0], video->using_nv12_tex);
 
 #ifdef _WIN32
 		if (gpu_active) {

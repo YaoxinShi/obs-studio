@@ -120,7 +120,7 @@ static bool obs_init_gpu_conversion(struct obs_video_info *ovi)
 #endif
 		video->convert_textures[0] =
 			gs_texture_create(ovi->output_width, ovi->output_height,
-					  GS_R8, 1, NULL, GS_RENDER_TARGET);
+					  GS_R8, 1, NULL, GS_RENDER_TARGET | GS_SHARED_KM_TEX);
 
 		const struct video_output_info *info =
 			video_output_get_info(video->video);
@@ -138,7 +138,7 @@ static bool obs_init_gpu_conversion(struct obs_video_info *ovi)
 		case VIDEO_FORMAT_NV12:
 			video->convert_textures[1] = gs_texture_create(
 				ovi->output_width / 2, ovi->output_height / 2,
-				GS_R8G8, 1, NULL, GS_RENDER_TARGET);
+				GS_R8G8, 1, NULL, GS_RENDER_TARGET | GS_SHARED_KM_TEX);
 			break;
 		case VIDEO_FORMAT_I444:
 			video->convert_textures[1] = gs_texture_create(
@@ -243,14 +243,14 @@ static bool obs_init_textures(struct obs_video_info *ovi)
 
 	video->render_texture = gs_texture_create(ovi->base_width,
 						  ovi->base_height, GS_RGBA, 1,
-						  NULL, GS_RENDER_TARGET);
+						  NULL, GS_RENDER_TARGET | GS_SHARED_KM_TEX);
 
 	if (!video->render_texture)
 		return false;
 
 	video->output_texture = gs_texture_create(ovi->output_width,
 						  ovi->output_height, GS_RGBA,
-						  1, NULL, GS_RENDER_TARGET);
+						  1, NULL, GS_RENDER_TARGET | GS_SHARED_KM_TEX);
 
 	if (!video->output_texture)
 		return false;
