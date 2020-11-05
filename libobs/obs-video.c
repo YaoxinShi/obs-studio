@@ -478,17 +478,30 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 		     tf.tex);
 		gs_copy_texture(tf.tex, video->convert_textures[0]);
 	} else {
-		blog(LOG_INFO, "=== [obs-video] send %p to encode thread, convert_textures switch to %p",
-		     video->convert_textures[0], tf.tex);
-		gs_texture_t *tex = video->convert_textures[0];
-		//gs_texture_t *tex_uv = video->convert_textures[1];
+		if (gs_texture_get_color_format(video->convert_textures[0]) ==
+		    GS_RGBA) {
+			blog(LOG_INFO,
+			     "=== [obs-video] send %p to encode thread, convert_textures switch to %p",
+			     video->convert_textures[0], tf.tex);
+			gs_texture_t *tex = video->convert_textures[0];
 
-		video->convert_textures[0] = tf.tex;
-		//video->convert_textures[1] = tf.tex_uv;
+			video->convert_textures[0] = tf.tex;
 
-		tf.tex = tex;
-		//tf.tex_uv = tex_uv;
-		tf.tex_uv = tex;
+			tf.tex = tex;
+			tf.tex_uv = NULL;
+		} else {
+			blog(LOG_INFO,
+			     "=== [obs-video] send %p to encode thread, convert_textures switch to %p",
+			     video->convert_textures[0], tf.tex);
+			gs_texture_t *tex = video->convert_textures[0];
+			gs_texture_t *tex_uv = video->convert_textures[1];
+
+			video->convert_textures[0] = tf.tex;
+			video->convert_textures[1] = tf.tex_uv;
+
+			tf.tex = tex;
+			tf.tex_uv = tex_uv;
+		}
 	}
 
 	tf.count = 1;

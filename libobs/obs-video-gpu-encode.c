@@ -269,14 +269,19 @@ bool init_gpu_encoding(struct obs_core_video *video)
 		gs_texture_t *tex;
 		gs_texture_t *tex_uv;
 
-		//gs_texture_create_nv12(&tex, &tex_uv, ovi->output_width,
-		//		       ovi->output_height,
-		//		       GS_RENDER_TARGET | GS_SHARED_KM_TEX);
-		tex = gs_texture_create(ovi->output_width, ovi->output_height,
-				  GS_RGBA, 1, NULL,
-				  GS_RENDER_TARGET | GS_SHARED_KM_TEX);
+		if (gs_texture_get_color_format(video->convert_textures[0]) ==
+		    GS_RGBA) {
+			tex = gs_texture_create(
+				ovi->output_width, ovi->output_height, GS_RGBA,
+				1, NULL, GS_RENDER_TARGET | GS_SHARED_KM_TEX);
+			tex_uv = NULL;
+		} else {
+			gs_texture_create_nv12(&tex, &tex_uv, ovi->output_width,
+					       ovi->output_height,
+					       GS_RENDER_TARGET | GS_SHARED_KM_TEX);
+		}
+
 		blog(LOG_INFO, "=== [gpu-encode] create gpu-encode texture pool %p", tex);
-		tex_uv = tex;
 		if (!tex) {
 			return false;
 		}
@@ -336,7 +341,7 @@ void free_gpu_encoding(struct obs_core_video *video)
 			struct obs_tex_frame frame;                     \
 			circlebuf_pop_front(&x, &frame, sizeof(frame)); \
 			gs_texture_destroy(frame.tex);                  \
-			/*gs_texture_destroy(frame.tex_uv);*/               \
+			if (frame.tex_uv) {gs_texture_destroy(frame.tex_uv);}               \
 		}                                                       \
 		circlebuf_free(&x);                                     \
 	} while (false)
