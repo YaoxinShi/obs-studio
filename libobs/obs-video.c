@@ -297,6 +297,60 @@ static const char *render_convert_texture_name = "render_convert_texture";
 static void render_convert_texture(struct obs_core_video *video,
 				   gs_texture_t *texture)
 {
+	if (gs_texture_get_color_format(video->convert_textures[0]) ==
+	    GS_RGBA) {
+		profile_start(render_convert_texture_name);
+		gs_texture_t *texture = video->output_texture;
+		gs_texture_t *target = video->convert_textures[0];
+		uint32_t width = gs_texture_get_width(target);
+		uint32_t height = gs_texture_get_height(target);
+
+		gs_effect_t *effect = video->default_effect;
+		gs_technique_t *tech =
+			gs_effect_get_technique(effect, "DrawAlphaDivide");
+		gs_eparam_t *image =
+			gs_effect_get_param_by_name(effect, "image");
+		gs_eparam_t *bres =
+			gs_effect_get_param_by_name(effect, "base_dimension");
+		gs_eparam_t *bres_i =
+			gs_effect_get_param_by_name(effect, "base_dimension_i");
+		size_t passes, i;
+
+		gs_set_render_target(target, NULL);
+		set_render_size(width, height);
+
+		if (bres) {
+			struct vec2 base;
+			vec2_set(&base, (float)video->base_width,
+				 (float)video->base_height);
+			gs_effect_set_vec2(bres, &base);
+		}
+
+		if (bres_i) {
+			struct vec2 base_i;
+			vec2_set(&base_i, 1.0f / (float)video->base_width,
+				 1.0f / (float)video->base_height);
+			gs_effect_set_vec2(bres_i, &base_i);
+		}
+
+		gs_effect_set_texture(image, texture);
+
+		gs_enable_blending(false);
+		passes = gs_technique_begin(tech);
+		for (i = 0; i < passes; i++) {
+			gs_technique_begin_pass(tech, i);
+			gs_draw_sprite(texture, 0, width, height);
+			gs_technique_end_pass(tech);
+		}
+		gs_technique_end(tech);
+		gs_enable_blending(true);
+
+		video->texture_converted = true;
+
+		profile_end(render_convert_texture_name);
+		return;
+	}
+
 	profile_start(render_convert_texture_name);
 
 	gs_effect_t *effect = video->conversion_effect;
