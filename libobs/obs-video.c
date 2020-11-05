@@ -300,6 +300,7 @@ static void render_convert_texture(struct obs_core_video *video,
 	if (gs_texture_get_color_format(video->convert_textures[0]) ==
 	    GS_RGBA) {
 		profile_start(render_convert_texture_name);
+		/* We can directly use output_texture (or even render_texture if no scaling???) instead of convert_textures
 		gs_texture_t *texture = video->output_texture;
 		gs_texture_t *target = video->convert_textures[0];
 		uint32_t width = gs_texture_get_width(target);
@@ -344,6 +345,7 @@ static void render_convert_texture(struct obs_core_video *video,
 		}
 		gs_technique_end(tech);
 		gs_enable_blending(true);
+		//*/
 
 		video->texture_converted = true;
 
@@ -474,18 +476,27 @@ static inline bool queue_frame(struct obs_core_video *video, bool raw_active,
 	 * reason.  otherwise, it goes to the 'duplicate' case above, which
 	 * will ensure better performance. */
 	if (raw_active || vframe_info->count > 1) {
-		blog(LOG_INFO, "=== [obs-video] send %p to encode thread, keep convert_textures",
-		     tf.tex);
-		gs_copy_texture(tf.tex, video->convert_textures[0]);
+		if (gs_texture_get_color_format(video->convert_textures[0]) ==
+		    GS_RGBA) {
+			blog(LOG_INFO,
+			     "=== [obs-video] send %p to encode thread, keep output_texture",
+			     tf.tex);
+			gs_copy_texture(tf.tex, video->output_texture);
+		} else {
+			blog(LOG_INFO,
+			     "=== [obs-video] send %p to encode thread, keep convert_textures",
+			     tf.tex);
+			gs_copy_texture(tf.tex, video->convert_textures[0]);
+		}
 	} else {
 		if (gs_texture_get_color_format(video->convert_textures[0]) ==
 		    GS_RGBA) {
 			blog(LOG_INFO,
-			     "=== [obs-video] send %p to encode thread, convert_textures switch to %p",
-			     video->convert_textures[0], tf.tex);
-			gs_texture_t *tex = video->convert_textures[0];
+			     "=== [obs-video] send %p to encode thread, output_texture switch to %p",
+			     video->output_texture, tf.tex);
+			gs_texture_t *tex = video->output_texture;
 
-			video->convert_textures[0] = tf.tex;
+			video->output_texture = tf.tex;
 
 			tf.tex = tex;
 			tf.tex_uv = NULL;
