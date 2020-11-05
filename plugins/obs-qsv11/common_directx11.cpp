@@ -476,7 +476,7 @@ mfxStatus simple_copytex(mfxHDL pthis, mfxMemId mid, mfxU32 tex_handle,
 	g_pD3D11Ctx->CopySubresourceRegion(pSurface, 0, 0, 0, 0, input_tex, 0,
 					   &SrcBox);
 
-#if 1
+#if 0
 	//=======================================================
 	// debug texture data
 	D3D11_MAPPED_SUBRESOURCE    lockedRect = { 0 };

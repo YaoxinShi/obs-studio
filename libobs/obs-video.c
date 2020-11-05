@@ -602,7 +602,7 @@ static inline void render_video(struct obs_core_video *video, bool raw_active,
 	if (raw_active || gpu_active) {
 		gs_texture_t *texture = render_output_texture(video);
 
-		dump_texture(texture, false);
+//		dump_texture(texture, false);
 
 #ifdef _WIN32
 		if (gpu_active)
@@ -612,7 +612,7 @@ static inline void render_video(struct obs_core_video *video, bool raw_active,
 		if (video->gpu_conversion)
 			render_convert_texture(video, texture);
 
-		dump_texture(video->convert_textures[0], video->using_nv12_tex);
+//		dump_texture(video->convert_textures[0], video->using_nv12_tex);
 
 #ifdef _WIN32
 		if (gpu_active) {

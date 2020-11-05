@@ -102,7 +102,7 @@ static void *gpu_encode_thread(void *unused)
 
 			blog(LOG_INFO, "=== [gpu-encode] send texture %p, handle %p to QSV", tf.tex, tf.handle);
 
-#if 1 //!!! Remember to add "d3d11.lib, dxgi.lib, dxguid.lib" to libobs's Properties->Linker->Input!!!
+#if 0 //!!! Remember to add "d3d11.lib, dxgi.lib, dxguid.lib" to libobs's Properties->Linker->Input!!!
 			//=======================================================
 			// debug texture data
 			HRESULT hres = S_OK;
