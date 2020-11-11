@@ -63,7 +63,7 @@ struct obs_service_info {
 	const char *(*get_username)(void *data);
 	const char *(*get_password)(void *data);
 
-	bool (*supports_multitrack)(void *data);
+	bool (*deprecated_1)();
 
 	void (*apply_encoder_settings)(void *data,
 				       obs_data_t *video_encoder_settings,
@@ -74,7 +74,7 @@ struct obs_service_info {
 
 	const char *(*get_output_type)(void *data);
 
-	/* TODO: more stuff later */
+	void (*get_max_res_fps)(void *data, int *cx, int *cy, int *fps);
 };
 
 EXPORT void obs_register_service_s(const struct obs_service_info *info,

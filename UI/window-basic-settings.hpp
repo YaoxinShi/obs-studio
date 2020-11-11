@@ -32,6 +32,7 @@
 
 class OBSBasic;
 class QAbstractButton;
+class QRadioButton;
 class QComboBox;
 class QCheckBox;
 class QLabel;
@@ -156,6 +157,10 @@ private:
 	uint32_t outputCX = 0;
 	uint32_t outputCY = 0;
 
+	QPointer<QCheckBox> vodTrackCheckbox;
+	QPointer<QWidget> vodTrackContainer;
+	QPointer<QRadioButton> vodTrack[MAX_AUDIO_MIXES];
+
 	void SaveCombo(QComboBox *widget, const char *section,
 		       const char *value);
 	void SaveComboData(QComboBox *widget, const char *section,
@@ -239,6 +244,8 @@ private:
 private slots:
 	void UpdateServerList();
 	void UpdateKeyLink();
+	void UpdateVodTrackSetting();
+	void UpdateMoreInfoLink();
 	void on_show_clicked();
 	void on_authPwShow_clicked();
 	void on_connectAccount_clicked();
@@ -288,6 +295,8 @@ private:
 	void FillAudioMonitoringDevices();
 
 	void RecalcOutputResPixels(const char *resText);
+
+	bool AskIfCanCloseSettings();
 
 	QIcon generalIcon;
 	QIcon streamIcon;
@@ -375,7 +384,8 @@ private slots:
 	void SetAdvancedIcon(const QIcon &icon);
 
 protected:
-	virtual void closeEvent(QCloseEvent *event);
+	virtual void closeEvent(QCloseEvent *event) override;
+	void reject() override;
 
 public:
 	OBSBasicSettings(QWidget *parent);

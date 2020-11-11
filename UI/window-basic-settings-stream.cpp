@@ -41,8 +41,6 @@ void OBSBasicSettings::InitStreamPage()
 	ui->bandwidthTestEnable->setVisible(false);
 	ui->twitchAddonDropdown->setVisible(false);
 	ui->twitchAddonLabel->setVisible(false);
-	ui->mixerAddonDropdown->setVisible(false);
-	ui->mixerAddonLabel->setVisible(false);
 
 	int vertSpacing = ui->topStreamLayout->verticalSpacing();
 
@@ -69,15 +67,18 @@ void OBSBasicSettings::InitStreamPage()
 	ui->twitchAddonDropdown->addItem(
 		QTStr("Basic.Settings.Stream.TTVAddon.Both"));
 
-	ui->mixerAddonDropdown->addItem(
-		QTStr("Basic.Settings.Stream.MixerAddon.None"));
-	ui->mixerAddonDropdown->addItem(
-		QTStr("Basic.Settings.Stream.MixerAddon.MEE"));
-
 	connect(ui->service, SIGNAL(currentIndexChanged(int)), this,
 		SLOT(UpdateServerList()));
 	connect(ui->service, SIGNAL(currentIndexChanged(int)), this,
 		SLOT(UpdateKeyLink()));
+	connect(ui->service, SIGNAL(currentIndexChanged(int)), this,
+		SLOT(UpdateVodTrackSetting()));
+	connect(ui->customServer, SIGNAL(textChanged(const QString &)), this,
+		SLOT(UpdateKeyLink()));
+	connect(ui->customServer, SIGNAL(editingFinished(const QString &)),
+		this, SLOT(UpdateKeyLink()));
+	connect(ui->service, SIGNAL(currentIndexChanged(int)), this,
+		SLOT(UpdateMoreInfoLink()));
 }
 
 void OBSBasicSettings::LoadStream1Settings()
@@ -119,9 +120,6 @@ void OBSBasicSettings::LoadStream1Settings()
 
 		idx = config_get_int(main->Config(), "Twitch", "AddonChoice");
 		ui->twitchAddonDropdown->setCurrentIndex(idx);
-
-		idx = config_get_int(main->Config(), "Mixer", "AddonChoice");
-		ui->mixerAddonDropdown->setCurrentIndex(idx);
 	}
 
 	UpdateServerList();
@@ -144,6 +142,8 @@ void OBSBasicSettings::LoadStream1Settings()
 	obs_data_release(settings);
 
 	UpdateKeyLink();
+	UpdateMoreInfoLink();
+	UpdateVodTrackSetting();
 
 	bool streamActive = obs_frontend_streaming_active();
 	ui->streamPage->setEnabled(!streamActive);
@@ -183,9 +183,6 @@ void OBSBasicSettings::SaveStream1Settings()
 		}
 	}
 
-	obs_data_set_bool(settings, "bwtest",
-			  ui->bandwidthTestEnable->isChecked());
-
 	if (!!auth && strcmp(auth->service(), "Twitch") == 0) {
 		bool choiceExists = config_has_user_value(
 			main->Config(), "Twitch", "AddonChoice");
@@ -198,19 +195,11 @@ void OBSBasicSettings::SaveStream1Settings()
 
 		if (choiceExists && currentChoice != newChoice)
 			forceAuthReload = true;
-	}
-	if (!!auth && strcmp(auth->service(), "Mixer") == 0) {
-		bool choiceExists = config_has_user_value(
-			main->Config(), "Mixer", "AddonChoice");
-		int currentChoice =
-			config_get_int(main->Config(), "Mixer", "AddonChoice");
-		int newChoice = ui->mixerAddonDropdown->currentIndex();
 
-		config_set_int(main->Config(), "Mixer", "AddonChoice",
-			       newChoice);
-
-		if (choiceExists && currentChoice != newChoice)
-			forceAuthReload = true;
+		obs_data_set_bool(settings, "bwtest",
+				  ui->bandwidthTestEnable->isChecked());
+	} else {
+		obs_data_set_bool(settings, "bwtest", false);
 	}
 
 	obs_data_set_string(settings, "key", QT_TO_UTF8(ui->key->text()));
@@ -229,29 +218,57 @@ void OBSBasicSettings::SaveStream1Settings()
 		main->auth->LoadUI();
 }
 
-void OBSBasicSettings::UpdateKeyLink()
+void OBSBasicSettings::UpdateMoreInfoLink()
 {
 	if (IsCustomService()) {
-		ui->getStreamKeyButton->hide();
+		ui->moreInfoButton->hide();
 		return;
 	}
 
 	QString serviceName = ui->service->currentText();
+	obs_properties_t *props = obs_get_service_properties("rtmp_common");
+	obs_property_t *services = obs_properties_get(props, "service");
+
+	OBSData settings = obs_data_create();
+	obs_data_release(settings);
+
+	obs_data_set_string(settings, "service", QT_TO_UTF8(serviceName));
+	obs_property_modified(services, settings);
+
+	const char *more_info_link =
+		obs_data_get_string(settings, "more_info_link");
+
+	if (!more_info_link || (*more_info_link == '\0')) {
+		ui->moreInfoButton->hide();
+	} else {
+		ui->moreInfoButton->setTargetUrl(QUrl(more_info_link));
+		ui->moreInfoButton->show();
+	}
+	obs_properties_destroy(props);
+}
+
+void OBSBasicSettings::UpdateKeyLink()
+{
+	QString serviceName = ui->service->currentText();
+	QString customServer = ui->customServer->text();
 	QString streamKeyLink;
 	if (serviceName == "Twitch") {
-		streamKeyLink =
-			"https://www.twitch.tv/broadcast/dashboard/streamkey";
-	} else if (serviceName == "YouTube / YouTube Gaming") {
+		streamKeyLink = "https://dashboard.twitch.tv/settings/stream";
+	} else if (serviceName.startsWith("YouTube")) {
 		streamKeyLink = "https://www.youtube.com/live_dashboard";
 	} else if (serviceName.startsWith("Restream.io")) {
 		streamKeyLink =
 			"https://restream.io/settings/streaming-setup?from=OBS";
-	} else if (serviceName == "Facebook Live") {
-		streamKeyLink = "https://www.facebook.com/live/create?ref=OBS";
+	} else if (serviceName == "Facebook Live" ||
+		   (customServer.contains("fbcdn.net") && IsCustomService())) {
+		streamKeyLink =
+			"https://www.facebook.com/live/producer?ref=OBS";
 	} else if (serviceName.startsWith("Twitter")) {
 		streamKeyLink = "https://www.pscp.tv/account/producer";
 	} else if (serviceName.startsWith("YouStreamer")) {
 		streamKeyLink = "https://app.youstreamer.com/stream/";
+	} else if (serviceName == "Trovo") {
+		streamKeyLink = "https://studio.trovo.live/mychannel/stream";
 	}
 
 	if (QString(streamKeyLink).isNull()) {
@@ -287,7 +304,7 @@ void OBSBasicSettings::LoadServices(bool showAll)
 	}
 
 	if (showAll)
-		names.sort();
+		names.sort(Qt::CaseInsensitive);
 
 	for (QString &name : names)
 		ui->service->addItem(name);
@@ -332,8 +349,6 @@ void OBSBasicSettings::on_service_currentIndexChanged(int)
 	ui->bandwidthTestEnable->setVisible(false);
 	ui->twitchAddonDropdown->setVisible(false);
 	ui->twitchAddonLabel->setVisible(false);
-	ui->mixerAddonDropdown->setVisible(false);
-	ui->mixerAddonLabel->setVisible(false);
 
 #ifdef BROWSER_AVAILABLE
 	if (cef) {
@@ -491,10 +506,8 @@ void OBSBasicSettings::OnOAuthStreamKeyConnected()
 			ui->bandwidthTestEnable->setVisible(true);
 			ui->twitchAddonLabel->setVisible(true);
 			ui->twitchAddonDropdown->setVisible(true);
-		}
-		if (strcmp(a->service(), "Mixer") == 0) {
-			ui->mixerAddonLabel->setVisible(true);
-			ui->mixerAddonDropdown->setVisible(true);
+		} else {
+			ui->bandwidthTestEnable->setChecked(false);
 		}
 	}
 
@@ -555,6 +568,8 @@ void OBSBasicSettings::on_disconnectAccount_clicked()
 	OAuth::DeleteCookies(service);
 #endif
 
+	ui->bandwidthTestEnable->setChecked(false);
+
 	ui->streamKeyWidget->setVisible(true);
 	ui->streamKeyLabel->setVisible(true);
 	ui->connectAccount2->setVisible(true);
@@ -581,4 +596,57 @@ void OBSBasicSettings::on_useAuth_toggled()
 	ui->authUsername->setVisible(use_auth);
 	ui->authPwLabel->setVisible(use_auth);
 	ui->authPwWidget->setVisible(use_auth);
+}
+
+void OBSBasicSettings::UpdateVodTrackSetting()
+{
+	bool enableVodTrack = ui->service->currentText() == "Twitch";
+	bool wasEnabled = !!vodTrackCheckbox;
+
+	if (enableVodTrack == wasEnabled)
+		return;
+
+	if (!enableVodTrack) {
+		delete vodTrackCheckbox;
+		delete vodTrackContainer;
+		return;
+	}
+
+	vodTrackCheckbox = new QCheckBox(
+		QTStr("Basic.Settings.Output.Adv.TwitchVodTrack"));
+	vodTrackCheckbox->setLayoutDirection(Qt::RightToLeft);
+
+	vodTrackContainer = new QWidget();
+	QHBoxLayout *vodTrackLayout = new QHBoxLayout();
+	for (int i = 0; i < MAX_AUDIO_MIXES; i++) {
+		vodTrack[i] = new QRadioButton(QString::number(i + 1));
+		vodTrackLayout->addWidget(vodTrack[i]);
+
+		HookWidget(vodTrack[i], SIGNAL(clicked(bool)),
+			   SLOT(OutputsChanged()));
+	}
+
+	HookWidget(vodTrackCheckbox, SIGNAL(clicked(bool)),
+		   SLOT(OutputsChanged()));
+
+	vodTrackLayout->addStretch();
+	vodTrackLayout->setContentsMargins(0, 0, 0, 0);
+
+	vodTrackContainer->setLayout(vodTrackLayout);
+
+	ui->advOutTopLayout->insertRow(2, vodTrackCheckbox, vodTrackContainer);
+
+	bool vodTrackEnabled =
+		config_get_bool(main->Config(), "AdvOut", "VodTrackEnabled");
+	vodTrackCheckbox->setChecked(vodTrackEnabled);
+	vodTrackContainer->setEnabled(vodTrackEnabled);
+
+	connect(vodTrackCheckbox, SIGNAL(clicked(bool)), vodTrackContainer,
+		SLOT(setEnabled(bool)));
+
+	int trackIndex =
+		config_get_int(main->Config(), "AdvOut", "VodTrackIndex");
+	for (int i = 0; i < MAX_AUDIO_MIXES; i++) {
+		vodTrack[i]->setChecked((i + 1) == trackIndex);
+	}
 }

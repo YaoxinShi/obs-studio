@@ -27,7 +27,69 @@
 #include <locale.h>
 
 #include "platform.hpp"
+
+#ifdef __linux__
+#include <sys/socket.h>
+#include <string.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <sys/un.h>
+#endif
+
 using namespace std;
+
+#ifdef __linux__
+void RunningInstanceCheck(bool &already_running)
+{
+	int uniq = socket(AF_LOCAL, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+
+	if (uniq == -1) {
+		blog(LOG_ERROR,
+		     "Failed to check for running instance, socket: %d", errno);
+		already_running = 0;
+		return;
+	}
+
+	struct sockaddr_un bindInfo;
+	memset(&bindInfo, 0, sizeof(sockaddr_un));
+	bindInfo.sun_family = AF_LOCAL;
+	char *abstactSockName = NULL;
+	asprintf(&abstactSockName, "%s %d %s", "/com/obsproject", getpid(),
+		 App()->GetVersionString().c_str());
+	memmove(bindInfo.sun_path + 1, abstactSockName,
+		strlen(abstactSockName));
+	free(abstactSockName);
+
+	int bindErr = bind(uniq, (struct sockaddr *)&bindInfo,
+			   sizeof(struct sockaddr_un));
+	already_running = bindErr == 0 ? 0 : 1;
+
+	if (already_running) {
+		return;
+	}
+
+	FILE *fp = fopen("/proc/net/unix", "re");
+
+	if (fp == NULL) {
+		return;
+	}
+
+	char *line = NULL;
+	size_t n = 0;
+	int obsCnt = 0;
+	while (getdelim(&line, &n, ' ', fp) != EOF) {
+		line[strcspn(line, "\n")] = '\0';
+		if (*line == '@') {
+			if (strstr(line, "@/com/obsproject") != NULL) {
+				++obsCnt;
+			}
+		}
+	}
+	already_running = obsCnt == 1 ? 0 : 1;
+	free(line);
+	fclose(fp);
+}
+#endif
 
 static inline bool check_path(const char *data, const char *path,
 			      string &output)
@@ -72,6 +134,7 @@ string GetDefaultVideoSavePath()
 vector<string> GetPreferredLocales()
 {
 	setlocale(LC_ALL, "");
+	vector<string> matched;
 	string messages = setlocale(LC_MESSAGES, NULL);
 	if (!messages.size() || messages == "C" || messages == "POSIX")
 		return {};
@@ -85,10 +148,10 @@ vector<string> GetPreferredLocales()
 			return {locale};
 
 		if (locale.substr(0, 2) == messages.substr(0, 2))
-			return {locale};
+			matched.push_back(locale);
 	}
 
-	return {};
+	return matched;
 }
 
 bool IsAlwaysOnTop(QWidget *window)

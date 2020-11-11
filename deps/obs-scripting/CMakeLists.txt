@@ -87,10 +87,6 @@ if(UI_ENABLED)
 	include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/UI/obs-frontend-api")
 endif()
 
-IF(BUILD_CAPTIONS)
-	string(TOUPPER "${BUILD_CAPTIONS}" BUILD_CAPTIONS)
-endif()
-
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/obs-scripting-config.h.in"
 	"${CMAKE_CURRENT_BINARY_DIR}/obs-scripting-config.h")
@@ -206,6 +202,8 @@ target_link_libraries(obs-scripting
 	${EXTRA_LIBS}
 	${obs-scripting_PLATFORM_DEPS}
 	)
+
+set_target_properties(obs-scripting PROPERTIES FOLDER "scripting")
 
 if(PYTHONLIBS_FOUND)
 	add_subdirectory(obspython)

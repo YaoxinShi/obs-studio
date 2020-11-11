@@ -67,4 +67,9 @@ QString GetMonitorName(const QString &id);
 void EnableOSXVSync(bool enable);
 void EnableOSXDockIcon(bool enable);
 void InstallNSApplicationSubclass();
+void disableColorSpaceConversion(QWidget *window);
+void CheckAppWithSameBundleID(bool &already_running);
+#endif
+#ifdef __linux__
+void RunningInstanceCheck(bool &already_running);
 #endif
