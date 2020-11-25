@@ -206,6 +206,14 @@ void maskToBoxes(std::vector<cv::Rect>& bboxes, int w, int h, std::vector<std::v
                 do_log(LOG_WARNING, "kill rect by area");
                 continue;
             }
+            if ((r.boundingRect().x < 0) ||
+                (r.boundingRect().y < 0) ||
+                (r.boundingRect().x + r.boundingRect().width > w) ||
+                (r.boundingRect().y + r.boundingRect().height > h))
+            {
+                do_log(LOG_WARNING, "kill rect by negative value or out of the border value");
+                continue;
+            }
             bboxes.emplace_back(r.boundingRect());
         }
     }
